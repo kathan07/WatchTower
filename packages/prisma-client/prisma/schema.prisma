@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(uuid())
+  username      String       @unique
+  email         String       @unique
+  password      String
+  subscription  Subscription?
+  monitor       Monitor?
+  createdAt     DateTime     @default(now())
+}
+
+model Website {
+  id           String      @id @default(uuid())
+  url          String      @unique
+  createdAt    DateTime    @default(now())
+  monitors     Monitor[]   // Many-to-many with Monitor
+  logs         Log[]
+  analytics    Analytics[]
+  alerts       Alert[]
+}
+
+model Monitor {
+  id        String    @id @default(uuid())
+  userId    String    @unique  // One-to-one with User
+  user      User      @relation(fields: [userId], references: [id])
+  websites  Website[] // Many-to-many relationship - limited to 10 sites by application logic
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Subscription {
+  id             String   @id @default(uuid())
+  type           SubType
+  userId         String   @unique  // One-to-one with User
+  user           User     @relation(fields: [userId], references: [id])
+  startDate      DateTime @default(now())
+  expirationDate DateTime
+  isActive       Boolean  @default(true)
+
+  @@index([userId])
+  @@index([isActive, expirationDate])
+  @@index([userId, isActive])
+}
+
+model Log {
+  id           String   @id @default(uuid())
+  websiteId    String
+  website      Website  @relation(fields: [websiteId], references: [id])
+  status       Status
+  timestamp    DateTime @default(now())
+  responseTime Int?     // Response time in ms
+
+  @@index([websiteId, timestamp])
+  @@index([status, timestamp])
+}
+
+model Analytics {
+  id              String          @id @default(uuid())
+  websiteId       String
+  website         Website         @relation(fields: [websiteId], references: [id])
+  periodType      AnalyticsPeriod
+  date            DateTime        @db.Date  // Will store year, month, day based on periodType
+  avgResponseTime Float           // in milliseconds
+  avgUptime       Float           // percentage
+  avgDowntime     Float           // percentage
+  avgDegradedTime Float           // percentage
+
+  @@unique([websiteId, periodType, date])
+  @@index([websiteId, periodType, date])
+  @@index([periodType, date])
+}
+
+model Alert {
+  id           String      @id @default(uuid())
+  websiteId    String
+  website      Website     @relation(fields: [websiteId], references: [id])
+  type         AlertType
+  message      String
+  timestamp    DateTime    @default(now())
+  status       AlertStatus @default(PENDING)
+
+  @@index([websiteId, timestamp(sort: Desc)])
+  @@index([status, timestamp(sort: Desc)])
+}
+
+enum SubType {
+  BASIC      // 3 months
+  PREMIUM    // 6 months
+  ENTERPRISE // 12 months
+}
+
+enum Status {
+  UP
+  DOWN
+  DEGRADED
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  MONTHLY
+  YEARLY
+}
+
+enum AlertType {
+  DOWNTIME    // When website goes down
+  PERFORMANCE // When response time exceeds threshold
+  RECOVERY    // When website recovers from down/degraded state
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+  ACKNOWLEDGED
+}
