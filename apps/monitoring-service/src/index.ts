@@ -48,10 +48,9 @@ class MonitoringWorker {
                     max: 100,
                     duration: 1000
                 },
-                settings: {
-                    stalledInterval: 30000,
-                    maxStalledCount: 3
-                }
+                lockDuration: 30000,         // Replaces stalledInterval
+                lockRenewTime: 15000,        // Half of lockDuration is a good practice
+                maxStalledCount: 3
             }
         );
 
@@ -134,7 +133,6 @@ class MonitoringWorker {
             await connectDb();
             console.log('Database connection established');
 
-            // BullMQ uses resume() instead of start()
             await this.worker.resume();
             console.log('Monitoring worker started');
 
@@ -168,7 +166,7 @@ class MonitoringWorker {
             await Promise.race([
                 Promise.all([
                     this.worker.close(),
-                    this.queueEvents.close(), // BullMQ requires explicit cleanup of QueueEvents
+                    this.queueEvents.close(),
                     disconnectDb()
                 ]),
                 new Promise((_, reject) =>
