@@ -1,6 +1,24 @@
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient, User, Status, AnalyticsPeriod} from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+
+
+interface metrics{
+    avgResponseTime: number,
+    avgUptime: number,
+    avgDowntime: number,
+    avgDegradedTime: number
+}
+
+
+const connectDb = async () => {
+    await prisma.$connect();
+}
+
+const disconnectDb = async () => {
+    await prisma.$disconnect();
+}
 
 const userExists = async (email: string): Promise<User | null> => {
     const user = await prisma.user.findUnique({
@@ -85,5 +103,89 @@ const deactivateSubscriptionAndMonitor = async (subscriptionId: string, monitorI
 };
 
 
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, User };
+
+const getActiveWebsites = async () => {
+    const activeWebsites = await prisma.website.findMany({
+        where: {
+            monitors: {
+                some: {
+                    isActive: true
+                }
+            }
+        },
+        select: {
+            id: true,
+            url: true,
+        }
+    });
+    return activeWebsites;
+}
+
+const getAvgResponseTime = async (websiteId: string, startDate: Date, endDate: Date) => {
+    const avgResponseTime = await prisma.log.aggregate({
+        where: {
+            websiteId,
+            timestamp: {
+                gte: startDate,
+                lte: endDate
+            }
+        },
+        _avg: {
+            responseTime: true
+        },
+        _count: {
+            _all: true
+        }
+    });
+    return avgResponseTime;
+}
+
+const getStatusCounts = async (websiteId: string, startDate: Date, endDate: Date) => {
+    const statusCounts = await prisma.log.groupBy({
+        by: ['status'],
+        where: {
+            websiteId,
+            timestamp: {
+                gte: startDate,
+                lte: endDate
+            }
+        },
+        _count: {
+            status: true
+        }
+    });
+
+    return statusCounts;
+}
+
+const createAnalytics = async (websiteId: string, startDate: Date, metrics:metrics, periodType: AnalyticsPeriod)=>{
+    await prisma.analytics.upsert({
+        where: {
+          websiteId_periodType_date: {
+            websiteId: websiteId,
+            periodType: periodType,
+            date: startDate
+          }
+        },
+        create: {
+          websiteId: websiteId,
+          periodType: periodType,
+          date: startDate,
+          ...metrics
+        },
+        update: metrics
+    });
+}
+const addLog = async (websiteId: string, status: Status, responseTime: number|null) => {
+    await prisma.log.create({
+        data: {
+          websiteId,
+          status,
+          responseTime,
+        },
+    });
+};
+
+
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, User, Status, AnalyticsPeriod };
 

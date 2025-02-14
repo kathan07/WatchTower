@@ -1,5 +1,5 @@
 {
-  "name": "cleaning-service",
+  "name": "monitoring-service",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -13,9 +13,11 @@
   "description": "",
   "dependencies": {
     "@repo/prisma": "^1.0.0",
-    "cron": "^3.5.0"
-  },
-  "devDependencies": {
+    "@repo/redis": "^1.0.0",
+    "axios": "^1.7.9",
+    "axios-retry": "^4.5.0",
+    "bull": "^4.16.5",
+    "bullmq": "^5.40.4",
     "nodemon": "^3.1.9"
   }
 }

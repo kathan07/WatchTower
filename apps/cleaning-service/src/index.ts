@@ -1,5 +1,5 @@
 import { CronJob } from 'cron';
-import { cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor} from '@repo/prisma';
+import { cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb } from '@repo/prisma';
 
 class CleanupService {
   private logCleanupJob: CronJob;
@@ -44,7 +44,7 @@ class CleanupService {
     try {
       const expiredSubscriptions = await getExpiredSubscriptions(now);
       for (const subscription of expiredSubscriptions) {
-        await deactivateSubscriptionAndMonitor(subscription.id,subscription.user.monitor.id);
+        await deactivateSubscriptionAndMonitor(subscription.id, subscription.user.monitor.id);
       }
     } catch (error) {
       console.error('Error handling expired subscriptions:', error);
@@ -95,6 +95,7 @@ class CleanupService {
     try {
       console.log('Starting cleanup service...');
       this.initializeCronJobs();
+      await connectDb();
       console.log('Cleanup service started successfully');
     } catch (error) {
       console.error('Error starting cleanup service:', error);
@@ -108,7 +109,14 @@ class CleanupService {
     this.logCleanupJob?.stop();
     this.analyticsCleanupJob?.stop();
     this.subscriptionCheckJob?.stop();
-    console.log('Cleanup service stopped successfully');
+    try {
+      await disconnectDb();
+      console.log('Cleanup service stopped successfully');
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+    } finally {
+      process.exit(0);
+    }
   }
 }
 
