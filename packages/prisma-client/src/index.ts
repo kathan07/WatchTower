@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
-import type {User, Status, AnalyticsPeriod} from "@prisma/client"
+import { PrismaClient, User, Status, AnalyticsPeriod } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 
 
-interface metrics{
+interface metrics {
     avgResponseTime: number,
     avgUptime: number,
     avgDowntime: number,
@@ -82,7 +81,7 @@ const getExpiredSubscriptions = async (now: Date) => {
 
 const deactivateSubscriptionAndMonitor = async (subscriptionId: string, monitorId: string) => {
     try {
-        await prisma.$transaction(async (tx:any) => {
+        await prisma.$transaction(async (tx: any) => {
             await tx.subscription.update({
                 where: { id: subscriptionId },
                 data: { isActive: false }
@@ -159,34 +158,34 @@ const getStatusCounts = async (websiteId: string, startDate: Date, endDate: Date
     return statusCounts;
 }
 
-const createAnalytics = async (websiteId: string, startDate: Date, metrics:metrics, periodType: AnalyticsPeriod)=>{
+const createAnalytics = async (websiteId: string, startDate: Date, metrics: metrics, periodType: AnalyticsPeriod) => {
     await prisma.analytics.upsert({
         where: {
-          websiteId_periodType_date: {
-            websiteId: websiteId,
-            periodType: periodType,
-            date: startDate
-          }
+            websiteId_periodType_date: {
+                websiteId: websiteId,
+                periodType: periodType,
+                date: startDate
+            }
         },
         create: {
-          websiteId: websiteId,
-          periodType: periodType,
-          date: startDate,
-          ...metrics
+            websiteId: websiteId,
+            periodType: periodType,
+            date: startDate,
+            ...metrics
         },
         update: metrics
     });
 }
-const addLog = async (websiteId: string, status: Status, responseTime: number|null) => {
+const addLog = async (websiteId: string, status: Status, responseTime: number | null) => {
     await prisma.log.create({
         data: {
-          websiteId,
-          status,
-          responseTime,
+            websiteId,
+            status,
+            responseTime,
         },
     });
 };
 
-
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, User, Status, AnalyticsPeriod };
+export type {User};
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, Status, AnalyticsPeriod };
 

@@ -1,7 +1,5 @@
-// services/monitoring/index.ts
-
+import { Worker, QueueEvents } from 'bullmq';
 import { addLog, connectDb, disconnectDb, Status } from '@repo/prisma';
-import { Queue, Worker, QueueEvents } from 'bullmq';
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import {
