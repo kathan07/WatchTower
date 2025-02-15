@@ -36,19 +36,20 @@ class AnalyticsService {
     const metrics = await getAvgResponseTime(websiteId, startDate, endDate);
 
     const statusCounts = await getStatusCounts(websiteId, startDate, endDate);
-
+  
     const totalLogs = metrics._count._all;
 
-    // Default all status counts to 0
-    const statusMap = {
+    // Create status map with defaults
+    const statusMap: Record<Status, number> = {
       [Status.UP]: 0,
       [Status.DOWN]: 0,
-      [Status.DEGRADED]: 0,
-      ...statusCounts.reduce((acc, curr) => {
-        acc[curr.status] = curr._count.status;
-        return acc;
-      }, {} as Record<Status, number>)
+      [Status.DEGRADED]: 0
     };
+
+    // Update with actual counts
+    statusCounts.forEach(count => {
+      statusMap[count.status] = count._count.status;
+    });
 
     // If no logs exist for the period, return default values
     if (totalLogs === 0) {

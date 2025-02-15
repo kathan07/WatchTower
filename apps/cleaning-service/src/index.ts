@@ -2,9 +2,10 @@ import { CronJob } from 'cron';
 import { cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb } from '@repo/prisma';
 
 class CleanupService {
-  private logCleanupJob: CronJob;
-  private analyticsCleanupJob: CronJob;
-  private subscriptionCheckJob: CronJob;
+  // Initialize with undefined to satisfy TypeScript
+  private logCleanupJob!: CronJob;
+  private analyticsCleanupJob!: CronJob;
+  private subscriptionCheckJob!: CronJob;
 
   constructor() {
     this.initializeErrorHandlers();
@@ -44,7 +45,13 @@ class CleanupService {
     try {
       const expiredSubscriptions = await getExpiredSubscriptions(now);
       for (const subscription of expiredSubscriptions) {
-        await deactivateSubscriptionAndMonitor(subscription.id, subscription.user.monitor.id);
+        // Add null check for monitor
+        if (subscription.user.monitor) {
+          await deactivateSubscriptionAndMonitor(subscription.id, subscription.user.monitor.id);
+        } else {
+          // Just deactivate the subscription if there's no monitor
+          await deactivateSubscriptionAndMonitor(subscription.id, '');
+        }
       }
     } catch (error) {
       console.error('Error handling expired subscriptions:', error);
