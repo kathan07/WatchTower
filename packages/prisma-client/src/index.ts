@@ -1,4 +1,5 @@
-import { PrismaClient, User, Status, AnalyticsPeriod} from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import type {User, Status, AnalyticsPeriod} from "@prisma/client"
 
 const prisma = new PrismaClient();
 
@@ -81,7 +82,7 @@ const getExpiredSubscriptions = async (now: Date) => {
 
 const deactivateSubscriptionAndMonitor = async (subscriptionId: string, monitorId: string) => {
     try {
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx:any) => {
             await tx.subscription.update({
                 where: { id: subscriptionId },
                 data: { isActive: false }
