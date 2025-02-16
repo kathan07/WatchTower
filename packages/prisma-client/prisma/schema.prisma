@@ -87,7 +87,7 @@ model Alert {
   type         AlertType
   message      String
   timestamp    DateTime    @default(now())
-  status       AlertStatus @default(PENDING)
+  status       AlertStatus 
 
   @@index([websiteId, timestamp(sort: Desc)])
   @@index([status, timestamp(sort: Desc)])
@@ -114,12 +114,8 @@ enum AnalyticsPeriod {
 enum AlertType {
   DOWNTIME    // When website goes down
   PERFORMANCE // When response time exceeds threshold
-  RECOVERY    // When website recovers from down/degraded state
 }
 
 enum AlertStatus {
-  PENDING
   SENT
-  FAILED
-  ACKNOWLEDGED
 }

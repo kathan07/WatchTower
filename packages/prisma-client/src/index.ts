@@ -1,4 +1,4 @@
-import { PrismaClient, User, Status, AnalyticsPeriod } from '@prisma/client';
+import { PrismaClient, User, Status, AnalyticsPeriod, AlertType, AlertStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -176,6 +176,7 @@ const createAnalytics = async (websiteId: string, startDate: Date, metrics: metr
         update: metrics
     });
 }
+
 const addLog = async (websiteId: string, status: Status, responseTime: number | null) => {
     await prisma.log.create({
         data: {
@@ -186,6 +187,80 @@ const addLog = async (websiteId: string, status: Status, responseTime: number | 
     });
 };
 
-export type {User};
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, Status, AnalyticsPeriod };
+const getActiveWebsitesWithMonitors = async () => {
+    const websites = await prisma.website.findMany({
+        where: {
+            monitors: {
+                some: {
+                    isActive: true
+                }
+            }
+        },
+        select: {
+            id: true,
+            url: true,
+            monitors: {
+                select: {
+                    isActive: true
+                }
+            }
+        }
+    });
+    return websites;
+}
+
+
+const getActiveMonitorsWithWebsitesAndUsers = async () => {
+    const activeMonitors = await prisma.monitor.findMany({
+        where: {
+            isActive: true
+        },
+        select: {
+            userId: true,
+            user: {
+                select: {
+                    email: true
+                }
+            },
+            websites: {
+                select: {
+                    id: true,
+                    url: true
+                }
+            }
+        }
+    });
+    return activeMonitors;
+}
+
+const getRecentLogs = async (websiteId: string, timestamp: Date) => {
+    const recentLogs = await prisma.log.findMany({
+        where: {
+            websiteId: websiteId,
+            timestamp: {
+                gte: timestamp
+            }
+        },
+        orderBy: {
+            timestamp: 'desc'
+        }
+    });
+    return recentLogs;
+}
+
+const createAlert = async (websiteId: string, type: AlertType, status: AlertStatus, message: string) => {
+    const alert = await prisma.alert.create({
+        data: {
+            websiteId: websiteId,
+            type: type,
+            message: message,
+            status: status
+        }
+    });
+    return alert;
+}
+
+
+export type { User };
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, Status, AnalyticsPeriod, AlertType, AlertStatus };
 
