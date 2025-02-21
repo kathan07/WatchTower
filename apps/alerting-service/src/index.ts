@@ -127,7 +127,7 @@ class AlertingService {
                   const predominantStatus = downCount > degradedCount ? Status.DOWN : Status.DEGRADED;
 
                   // Calculate duration
-                  const oldestLogTime = recentLogs[recentLogs.length - 1].timestamp;
+                  const oldestLogTime = recentLogs[recentLogs.length - 1]!.timestamp;
                   const duration = formatDistanceToNow(oldestLogTime);
 
                   const message: string = `Website ${website.url} has been ${predominantStatus} for ${duration}`

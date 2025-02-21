@@ -3,14 +3,19 @@ import { prisma } from '@repo/prisma';
 import errorHandler from './error';
 
 interface CustomRequest extends Request {
-    user: any;
+    user: {
+        id: string;
+        username: string;
+        email: string;
+        subscriptionStatus?: boolean;
+    };
 }
 
 const verifySubscription = async (
     req: CustomRequest, 
     res: Response, 
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
         const userId = req.user.id;
 

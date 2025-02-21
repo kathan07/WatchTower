@@ -1,5 +1,3 @@
-// services/scheduler/index.ts
-
 import { connectDb, disconnectDb, getActiveWebsitesWithMonitors} from '@repo/prisma';
 import { CronJob } from 'cron';
 import {

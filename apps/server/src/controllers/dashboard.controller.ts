@@ -8,6 +8,9 @@ import { redisClient, WEBSITE_CACHE_KEY, WEBSITE_CACHE_TTL } from '@repo/redis';
 interface UserRequest extends Request {
     user: {
         id: string;
+        username: string;
+        email: string;
+        subscriptionStatus: boolean;
     };
 }
 
@@ -79,7 +82,7 @@ const addWebsite = async (
     req: AddWebsiteRequest,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
         const { url } = req.body;
 
@@ -169,7 +172,7 @@ const removeWebsite = async (
     req: RemoveWebsiteRequest,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
         const websiteId = req.params.websiteId;
         const userId = req.user.id;
@@ -219,7 +222,7 @@ const getAnalytics = async (
     req: GetAnalyticsRequest,
     res: Response,
     next: NextFunction
-): Promise<any> => {
+): Promise<void> => {
     try {
         const userId = req.user.id;
         const currentDate = new Date();
@@ -259,7 +262,7 @@ const getAnalytics = async (
         }
 
         if (monitor.websites.length === 0) {
-            return res.status(200).json({
+            res.status(200).json({
                 success: true,
                 data: {
                     monitorId: monitor.id,

@@ -20,7 +20,7 @@ app.use(cors());
 
 
 app.use("/api/auth", authRoute);
-app.use("/api/dashboard", verifyUser, verifySubscription, dashboardRoute);
+app.use("/api/dashboard", verifyUser as express.RequestHandler, verifySubscription as express.RequestHandler, dashboardRoute);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, TypeScript + Express!');
