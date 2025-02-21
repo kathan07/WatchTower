@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import {userExists,createUser } from '@repo/prisma';
+import { userExists, createUser, createMonitor } from '@repo/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import errorHandler  from '../utils/error'
+import errorHandler from '../utils/error'
 
 
 // Request body interfaces
@@ -30,8 +30,12 @@ const register = async (
             return next(errorHandler(400, "User already exists"));
         }
         const hashedPassword = await bcrypt.hashSync(password, 10);
-        await createUser(username, hashedPassword, email);
-        res.status(201).json("User created successfully");
+        const user = await createUser(username, hashedPassword, email);
+        await createMonitor(user.id);
+        res.status(201).json({
+            success: true,
+            message: "User created successfully"
+        });
     } catch (error) {
         next(error);
     }
@@ -63,7 +67,7 @@ const login = async (
         const { password: _, ...userWithoutPassword } = validUser;
 
         res
-            .cookie("access_token", token, { 
+            .cookie("access_token", token, {
                 httpOnly: true,
                 maxAge: 24 * 60 * 60 * 1000 // 1 day
             })

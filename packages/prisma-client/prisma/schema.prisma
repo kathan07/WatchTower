@@ -32,7 +32,7 @@ model Monitor {
   userId    String    @unique  // One-to-one with User
   user      User      @relation(fields: [userId], references: [id])
   websites  Website[] // Many-to-many relationship - limited to 10 sites by application logic
-  isActive  Boolean   @default(true)
+  isActive  Boolean   @default(false)
   createdAt DateTime  @default(now())
 
   @@index([userId])

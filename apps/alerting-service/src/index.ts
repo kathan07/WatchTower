@@ -1,4 +1,4 @@
-import { Status, AlertType, AlertStatus, disconnectDb, connectDb, getRecentLogs, createAlert, updateAlert, getActiveMonitorsWithWebsitesAndUsers } from '@repo/prisma';
+import { Status, AlertType, AlertStatus, disconnectDb, connectDb, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers } from '@repo/prisma';
 import { CronJob } from 'cron';
 import {
   redisClient,
@@ -100,8 +100,8 @@ class AlertingService {
               // Get all logs from the last 15 minutes
               const recentLogs = await getRecentLogs(website.id, fifteenMinutesAgo);
               // Skip if no logs found
-              if (recentLogs.length === 0) {
-                console.log(`No logs found in the last 15 minutes for website ${website.url}`);
+              if (recentLogs.length === 0 || recentLogs.length < 10) {
+                console.log(`There are very few logs found in the last 15 minutes for website ${website.url}`);
                 return;
               }
 

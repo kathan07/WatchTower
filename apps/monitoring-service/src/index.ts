@@ -114,7 +114,7 @@ class MonitoringWorker {
                 message: axiosError.message,
                 code: axiosError.code,
                 response: axiosError.response?.status,
-                retryCount: (axiosError.config as any)?.['axios-retry']?.retryCount || 0
+                retryCount: (axiosError.config as any)?._retry || 0
             });
         }
 

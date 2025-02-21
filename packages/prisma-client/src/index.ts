@@ -2,8 +2,6 @@ import { PrismaClient, User, Status, AnalyticsPeriod, AlertType, AlertStatus } f
 
 const prisma = new PrismaClient();
 
-
-
 interface metrics {
     avgResponseTime: number,
     avgUptime: number,
@@ -28,13 +26,17 @@ const userExists = async (email: string): Promise<User | null> => {
 }
 
 const createUser = async (username: string, password: string, email: string) => {
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
         data: {
             username,
             email,
             password
         },
-    })
+        select: {
+            id: true
+        }
+    });
+    return newUser;
 }
 
 const cleanLogs = async (date: Date) => {
@@ -260,7 +262,16 @@ const createAlert = async (websiteId: string, type: AlertType, status: AlertStat
     return alert;
 }
 
+const createMonitor = async (userId: string) => {
+    await prisma.monitor.create({
+        data: {
+            userId: userId,
+            isActive: false
+        }
+    });
+}
+
 
 export type { User };
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, Status, AnalyticsPeriod, AlertType, AlertStatus };
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, Status, AnalyticsPeriod, AlertType, AlertStatus };
 
