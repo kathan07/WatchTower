@@ -1,14 +1,12 @@
-import React, { useState, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import axios from 'axios';
+import React, { useState, FormEvent, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { useUser } from '../contexts/userContext';
 
 interface FormData {
     email: string;
     password: string;
-}
-
-interface FormErrors {
-    email?: string;
-    password?: string;
 }
 
 const SignIn: React.FC = () => {
@@ -16,10 +14,9 @@ const SignIn: React.FC = () => {
         email: '',
         password: '',
     });
-
-    const [errors, setErrors] = useState<FormErrors>({});
+    const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
+    const { updateUser } = useUser();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -29,32 +26,34 @@ const SignIn: React.FC = () => {
         });
     };
 
+    useEffect(() => {
+        const user = localStorage.getItem('user');
+        if (user) {
+            navigate('/');
+        }
+    }, [navigate]);
+
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         try {
-            // Simulate API call
-            console.log('Submitting form data:', formData);
-
-            // Here you would typically send a request to your authentication service
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Handle successful login
-            alert('Sign in successful!');
-
-            // Reset form
-            setFormData({
-                email: '',
-                password: '',
-            });
+            const res = await axios.post('/api/auth/login', formData);
+            if (res.data.success) {
+                localStorage.setItem('user', JSON.stringify(res.data.user));
+                updateUser(res.data.user);
+                toast.success('Sign in successful!');
+                navigate('/');
+            }
+            else {
+                throw new Error('Login failed');
+            }
         } catch (error) {
             console.error('Login failed:', error);
-            alert('Sign in failed. Please try again.');
+            toast.error('Sign in failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
-
     };
 
     return (
@@ -79,12 +78,8 @@ const SignIn: React.FC = () => {
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className={`px-2 py-3 mt-1 block w-full rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300'
-                                        } shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm`}
+                                    className="px-2 py-3 mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm"
                                 />
-                                {errors.email && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                                )}
                             </div>
                         </div>
 
@@ -101,12 +96,8 @@ const SignIn: React.FC = () => {
                                     required
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className={`px-2 py-3 mt-1 block w-full rounded-md border ${errors.password ? 'border-red-500' : 'border-gray-300'
-                                        } shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm`}
+                                    className="px-2 py-3 mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm"
                                 />
-                                {errors.password && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                                )}
                             </div>
                         </div>
 

@@ -271,7 +271,23 @@ const createMonitor = async (userId: string) => {
     });
 }
 
+const getActiveSubscriptions = async (userId: string, currentDate: Date) => {
+    const subscription = await prisma.subscription.findFirst({
+        where: {
+            userId: userId,
+            isActive: true,
+            expirationDate: {
+                gt: currentDate
+            }
+        },
+        orderBy: {
+            expirationDate: 'desc'
+        },
+    });
+    return subscription;
+}
+
 
 export type { User };
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, Status, AnalyticsPeriod, AlertType, AlertStatus };
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, getActiveSubscriptions, Status, AnalyticsPeriod, AlertType, AlertStatus };
 

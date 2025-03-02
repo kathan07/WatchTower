@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from '@repo/prisma';
+import { getActiveSubscriptions} from '@repo/prisma';
 import errorHandler from './error';
 
 interface CustomRequest extends Request {
@@ -21,18 +21,7 @@ const verifySubscription = async (
 
         const currentDate = new Date();
 
-        const subscription = await prisma.subscription.findFirst({
-            where: {
-                userId: userId,
-                isActive: true,
-                expirationDate: {
-                    gt: currentDate
-                }
-            },
-            orderBy: {
-                expirationDate: 'desc'
-            },
-        });
+        const subscription = await getActiveSubscriptions(userId, currentDate);
 
         if (!subscription) {
             return next(errorHandler(403, 'Unauthorized: Active subscription required'));

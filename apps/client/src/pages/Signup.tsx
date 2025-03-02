@@ -1,5 +1,7 @@
-import React, { useState, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import axios from 'axios';
+import React, { useState, FormEvent, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 interface FormData {
     username: string;
@@ -7,49 +9,16 @@ interface FormData {
     password: string;
 }
 
-interface FormErrors {
-    username?: string;
-    email?: string;
-    password?: string;
-}
-
 const SignUp: React.FC = () => {
+
+    const navigate = useNavigate();
     const [formData, setFormData] = useState<FormData>({
         username: '',
         email: '',
         password: '',
     });
 
-    const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-    const validateForm = (): boolean => {
-        const newErrors: FormErrors = {};
-
-        // Username validation
-        if (!formData.username) {
-            newErrors.username = 'Username is required';
-        } else if (formData.username.length < 3) {
-            newErrors.username = 'Username must be at least 3 characters';
-        }
-
-        // Email validation
-        if (!formData.email) {
-            newErrors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = 'Email is invalid';
-        }
-
-        // Password validation
-        if (!formData.password) {
-            newErrors.password = 'Password is required';
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -59,34 +28,31 @@ const SignUp: React.FC = () => {
         });
     };
 
+    useEffect(() => {
+        const user = localStorage.getItem('user');
+        if (user) {
+            navigate('/');
+        }
+    }, [navigate]);
+
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        if (validateForm()) {
-            setIsSubmitting(true);
-
-            try {
-                // Simulate API call
-                console.log('Submitting signup data:', formData);
-
-                // Here you would typically send a request to your registration service
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Handle successful registration
-                alert('Sign up successful! You can now login.');
-
-                // Reset form
-                setFormData({
-                    username: '',
-                    email: '',
-                    password: '',
-                });
-            } catch (error) {
-                console.error('Registration failed:', error);
-                alert('Sign up failed. Please try again.');
-            } finally {
-                setIsSubmitting(false);
+        try {
+            const res = await axios.post('/api/auth/register', formData);
+            if (res.data.success) {
+                toast.success('Registration successful! Please sign in.');
+                navigate('/signin');
             }
+            else {
+                throw new Error('Registration failed');
+            }
+        } catch (error) {
+            console.error('Registration failed:', error);
+            toast.error('Sign up failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -112,12 +78,8 @@ const SignUp: React.FC = () => {
                                     required
                                     value={formData.username}
                                     onChange={handleChange}
-                                    className={`px-2 py-3 mt-1 block w-full rounded-md border ${errors.username ? 'border-red-500' : 'border-gray-300'
-                                        } shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm`}
+                                    className="px-2 py-3 mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm"
                                 />
-                                {errors.username && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.username}</p>
-                                )}
                             </div>
                         </div>
 
@@ -134,12 +96,8 @@ const SignUp: React.FC = () => {
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className={`px-2 py-3 mt-1 block w-full rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300'
-                                        } shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm`}
+                                    className="px-2 py-3 mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm"
                                 />
-                                {errors.email && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                                )}
                             </div>
                         </div>
 
@@ -156,12 +114,8 @@ const SignUp: React.FC = () => {
                                     required
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className={`px-2 py-3 mt-1 block w-full rounded-md border ${errors.password ? 'border-red-500' : 'border-gray-300'
-                                        } shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm`}
+                                    className="px-2 py-3 mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 sm:text-sm"
                                 />
-                                {errors.password && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                                )}
                             </div>
                         </div>
 

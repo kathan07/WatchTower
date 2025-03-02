@@ -26,7 +26,11 @@ interface RemoveWebsiteRequest extends UserRequest {
     };
 }
 
-interface GetAnalyticsRequest extends UserRequest { }
+interface GetAnalyticsRequest extends UserRequest {
+    params: {
+        websiteId: string;
+    };
+}
 
 // Other interfaces
 interface Analytics {
@@ -168,6 +172,48 @@ const addWebsite = async (
     }
 };
 
+const getWebsites = async (
+    req: UserRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const userId = req.user.id;
+
+        const monitor = await prisma.monitor.findFirst({
+            where: {
+                userId,
+                isActive: true
+            },
+            include: {
+                websites: {
+                    select: {
+                        id: true,
+                        url: true,
+                        createdAt: true
+                    }
+                }
+            }
+        });
+
+        if (!monitor) {
+            return next(errorHandler(404, 'No active monitor found'));
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                monitorId: monitor.id,
+                websiteCount: monitor.websites.length,
+                websites: monitor.websites
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 const removeWebsite = async (
     req: RemoveWebsiteRequest,
     res: Response,
@@ -225,6 +271,7 @@ const getAnalytics = async (
 ): Promise<void> => {
     try {
         const userId = req.user.id;
+        const websiteId = req.params.websiteId;
         const currentDate = new Date();
 
         const dateRanges = {
@@ -242,90 +289,91 @@ const getAnalytics = async (
             }
         };
 
-        const monitor = await prisma.monitor.findFirst({
+        // Check if the website exists and belongs to the user's active monitor
+        const website = await prisma.website.findFirst({
             where: {
-                userId,
-                isActive: true
-            },
-            include: {
-                websites: {
-                    select: {
-                        id: true,
-                        url: true
+                id: websiteId,
+                monitors: {
+                    some: {
+                        userId,
+                        isActive: true
                     }
+                }
+            },
+            select: {
+                id: true,
+                url: true,
+                monitors: {
+                    where: {
+                        userId,
+                        isActive: true
+                    },
+                    select: {
+                        id: true
+                    },
+                    take: 1
                 }
             }
         });
 
-        if (!monitor) {
-            return next(errorHandler(404, 'Active monitor not found'));
+        if (!website) {
+            return next(errorHandler(404, 'Website not found or not associated with an active monitor'));
         }
 
-        if (monitor.websites.length === 0) {
-            res.status(200).json({
-                success: true,
-                data: {
-                    monitorId: monitor.id,
-                    websiteCount: 0,
-                    websites: []
-                }
-            });
-        }
+        const monitorId = website.monitors[0]?.id;
 
-        const websiteAnalytics = await Promise.all(
-            monitor.websites.map(async (website) => {
-                const analyticsQueries = Object.entries(dateRanges).map(([period, { start, end }]) =>
-                    prisma.analytics.findFirst({
-                        where: {
-                            websiteId: website.id,
-                            periodType: period.toUpperCase() as AnalyticsPeriod,
-                            date: { gte: start, lte: end }
-                        },
-                        select: {
-                            date: true,
-                            avgResponseTime: true,
-                            avgUptime: true,
-                            avgDowntime: true,
-                            avgDegradedTime: true
-                        }
-                    })
-                );
-
-                const [daily, monthly, yearly] = await Promise.all(analyticsQueries);
-
-                return {
-                    websiteId: website.id,
-                    url: website.url,
-                    analytics: {
-                        daily: daily && {
-                            date: daily.date,
-                            ...formatMetrics(daily)
-                        },
-                        monthly: monthly && {
-                            period: formatDate(monthly.date, 'YYYY-MM'),
-                            ...formatMetrics(monthly)
-                        },
-                        yearly: yearly && {
-                            year: formatDate(yearly.date, 'YYYY'),
-                            ...formatMetrics(yearly)
-                        }
+        // Get analytics for the specific website
+        const analyticsQueries = Object.entries(dateRanges).map(([period, { start, end }]) =>
+            prisma.analytics.findFirst({
+                where: {
+                    websiteId,
+                    periodType: period.toUpperCase() as AnalyticsPeriod,
+                    date: {
+                        gte: start,
+                        lte: end
                     }
-                };
+                },
+                select: {
+                    date: true,
+                    avgResponseTime: true,
+                    avgUptime: true,
+                    avgDowntime: true,
+                    avgDegradedTime: true
+                }
             })
         );
+
+        const [daily, monthly, yearly] = await Promise.all(analyticsQueries);
+
+        const websiteAnalytics = {
+            websiteId: website.id,
+            url: website.url,
+            analytics: {
+                daily: daily ? {
+                    date: daily.date,
+                    ...formatMetrics(daily)
+                } : null,
+                monthly: monthly ? {
+                    period: formatDate(monthly.date, 'YYYY-MM'),
+                    ...formatMetrics(monthly)
+                } : null,
+                yearly: yearly ? {
+                    year: formatDate(yearly.date, 'YYYY'),
+                    ...formatMetrics(yearly)
+                } : null
+            }
+        };
 
         res.status(200).json({
             success: true,
             data: {
-                monitorId: monitor.id,
-                websiteCount: monitor.websites.length,
-                websites: websiteAnalytics
+                monitorId,
+                website: websiteAnalytics
             }
         });
-
     } catch (error) {
         next(error);
     }
 };
 
-export { addWebsite, removeWebsite, getAnalytics };
+export { addWebsite, removeWebsite, getAnalytics, getWebsites };

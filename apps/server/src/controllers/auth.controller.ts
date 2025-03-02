@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userExists, createUser, createMonitor } from '@repo/prisma';
+import { userExists, createUser, createMonitor, getActiveSubscriptions } from '@repo/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import errorHandler from '../utils/error'
@@ -17,6 +17,20 @@ interface LoginRequestBody {
     password: string;
 }
 
+interface BaseUser {
+    id: string;
+    username: string;
+    email: string;
+    createdAt: Date;
+}
+
+interface User extends BaseUser {
+    password: string;
+}
+
+interface UserWithSubscription extends BaseUser {
+    subscriptionStatus: boolean;
+}
 
 const register = async (
     req: Request<{}, {}, RegisterRequestBody>,
@@ -64,15 +78,25 @@ const login = async (
         );
 
         // Create a copy of user without password
-        const { password: _, ...userWithoutPassword } = validUser;
+        const { password: _, ...baseUser } = validUser;
+        const userId = baseUser.id;
+        const currentDate = new Date();
+        const subscription = await getActiveSubscriptions(userId, currentDate);
 
+        const userWithoutPassword: UserWithSubscription = {
+            ...baseUser,
+            subscriptionStatus: subscription === null ? false : true
+        }
         res
             .cookie("access_token", token, {
                 httpOnly: true,
                 maxAge: 24 * 60 * 60 * 1000 // 1 day
             })
             .status(200)
-            .json(userWithoutPassword);
+            .json({
+                success: true,
+                user: userWithoutPassword
+            });
     } catch (error) {
         next(error);
     }
