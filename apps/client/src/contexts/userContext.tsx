@@ -6,6 +6,7 @@ interface User {
     email: string;
     createdAt: Date;
     subscriptionStatus: boolean;
+    subscriptionType?: string;
 }
 
 interface UserContextType {

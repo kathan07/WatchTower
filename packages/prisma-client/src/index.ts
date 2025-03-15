@@ -1,4 +1,4 @@
-import { PrismaClient, User, Status, AnalyticsPeriod, AlertType, AlertStatus } from '@prisma/client';
+import { PrismaClient, User, Status, AnalyticsPeriod, AlertType, AlertStatus, SubType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -289,5 +289,5 @@ const getActiveSubscriptions = async (userId: string, currentDate: Date) => {
 
 
 export type { User };
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, getActiveSubscriptions, Status, AnalyticsPeriod, AlertType, AlertStatus };
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, getActiveSubscriptions, Status, AnalyticsPeriod, AlertType, AlertStatus, SubType};
 

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userExists, createUser, createMonitor, getActiveSubscriptions } from '@repo/prisma';
+import { userExists, createUser, createMonitor, getActiveSubscriptions, SubType } from '@repo/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import errorHandler from '../utils/error'
@@ -30,6 +30,7 @@ interface User extends BaseUser {
 
 interface UserWithSubscription extends BaseUser {
     subscriptionStatus: boolean;
+    subscriptionType?: SubType;
 }
 
 const register = async (
@@ -82,10 +83,19 @@ const login = async (
         const userId = baseUser.id;
         const currentDate = new Date();
         const subscription = await getActiveSubscriptions(userId, currentDate);
-
-        const userWithoutPassword: UserWithSubscription = {
-            ...baseUser,
-            subscriptionStatus: subscription === null ? false : true
+        let userWithoutPassword: UserWithSubscription;
+        if (subscription === null) {
+            userWithoutPassword = {
+                ...baseUser,
+                subscriptionStatus: false
+            }
+        }
+        else {
+            userWithoutPassword = {
+                ...baseUser,
+                subscriptionStatus: true,
+                subscriptionType: subscription.type
+            }
         }
         res
             .cookie("access_token", token, {

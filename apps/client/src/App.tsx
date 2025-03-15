@@ -5,7 +5,9 @@ import PageNotFound from "./pages/PageNotFound"
 import { ToastContainer } from "react-toastify"
 import { UserProvider } from "./contexts/userContext"
 import PrivateRoute from "./components/PrivateRoute"
-
+import Plans from "./pages/Plans"
+import SubscribedRoute from "./components/SubscribedRoute"
+import Home from "./pages/Home"
 
 function App() {
   return (
@@ -15,7 +17,10 @@ function App() {
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
           <Route element={<PrivateRoute />}>
-            <Route path="/" element={<h1>Home</h1>} />
+            <Route path="/plans" element={<Plans />} />
+            <Route element={<SubscribedRoute />}>
+              <Route path="/" element={<Home />} />
+            </Route>
           </Route>
           <Route path="*" element={<PageNotFound />} />
         </Routes>

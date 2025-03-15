@@ -31,7 +31,14 @@ const SignUp: React.FC = () => {
     useEffect(() => {
         const user = localStorage.getItem('user');
         if (user) {
-            navigate('/');
+            const curUser = JSON.parse(user);
+            if (curUser.subscriptionStatus) {
+                navigate('/');
+            }
+            else {
+                navigate('/plans');
+            }
+
         }
     }, [navigate]);
 

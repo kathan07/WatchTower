@@ -29,7 +29,14 @@ const SignIn: React.FC = () => {
     useEffect(() => {
         const user = localStorage.getItem('user');
         if (user) {
-            navigate('/');
+            const curUser = JSON.parse(user);
+            if (curUser.subscriptionStatus){
+                navigate('/');
+            }
+            else{
+                navigate('/plans');
+            }
+                
         }
     }, [navigate]);
 
@@ -43,7 +50,12 @@ const SignIn: React.FC = () => {
                 localStorage.setItem('user', JSON.stringify(res.data.user));
                 updateUser(res.data.user);
                 toast.success('Sign in successful!');
-                navigate('/');
+                if (res.data.user.subscriptionStatus){
+                    navigate('/');
+                }
+                else{
+                    navigate('/plans');
+                }
             }
             else {
                 throw new Error('Login failed');
