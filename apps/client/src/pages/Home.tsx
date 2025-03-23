@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { BarLoader } from 'react-spinners';
 
 const Home: React.FC = () => {
     interface Website {
@@ -9,55 +12,91 @@ const Home: React.FC = () => {
     }
 
     const [websites, setWebsites] = useState<Website[]>([]);
-    const [newWebsiteUrl, setNewWebsiteUrl] = useState('');
+    const [websiteCount, setWebsiteCount] = useState<number>();
+    const [newWebsiteUrl, setNewWebsiteUrl] = useState({
+        url: "",
+    });
     const [isAddingWebsite, setIsAddingWebsite] = useState(false);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState<boolean>(false);
+
+    const getWebsites = async () => {
+        try {
+            setLoading(true);
+            const websiteData = await axios.get('/api/dashboard/getWebsites');
+            if (websiteData.data.success) {
+                setWebsiteCount(websiteData.data.data.websiteCount);
+                setWebsites(websiteData.data.data.websites);
+            }
+            else {
+                throw new Error('Failed to fetch websites');
+            }
+        } catch (error) {
+            toast.error('Failed to fetch websites');
+            console.error(error);
+        }
+        finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        // In a real app, you would fetch from your API
-        // For now, use mock data
-        const mockWebsites: Website[] = [
-            {
-                id: '1',
-                url: 'https://example.com',
-            },
-            {
-                id: '2',
-                url: 'https://test.com',
-            }
-        ];
-        setWebsites(mockWebsites);
+        getWebsites();
     }, []);
 
-    const handleAddWebsite = () => {
-        if (!newWebsiteUrl) {
-            setError('Please enter both URL and name');
+    const handleAddWebsite = async () => {
+        if (newWebsiteUrl.url.trim() === '') {
+            setError('Please enter URL');
             return;
         }
-
-        // Validate URL
+        if (websiteCount === 10) {
+            setError('Maximum limit of 10 websites reached');
+            return;
+        }
         try {
-            new URL(newWebsiteUrl);
+            const website = new URL(newWebsiteUrl.url);
+            if (!website.protocol.startsWith('http') && !website.protocol.startsWith('https')) {
+                throw new Error();
+            }
         } catch (e) {
             setError('Please enter a valid URL');
             return;
         }
 
-        // In a real app, you would call your API here
-        const newWebsite: Website = {
-            id: Date.now().toString(),
-            url: newWebsiteUrl,
-        };
 
-        setWebsites([...websites, newWebsite]);
-        setNewWebsiteUrl('');
-        setIsAddingWebsite(false);
-        setError('');
+        try {
+            const response = await axios.post("api/dashboard/addwebsite", newWebsiteUrl);
+            if (!response.data.success) {
+                throw new Error('Failed to add website');
+            }
+            setWebsites([...websites, response.data.website]);
+
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to add website');
+        } finally {
+            setNewWebsiteUrl({ url: "" });
+            setIsAddingWebsite(false);
+            setError('');
+        }
     };
 
     const handleRemoveWebsite = (id: string) => {
-        // In a real app, you would call your API here
-        setWebsites(websites.filter(website => website.id !== id));
+        const removeWebsite = async () => {
+            try {
+                const response = await axios.post(`/api/dashboard/removeWebsite/${id}`);
+                if (!response.data.success) {
+                    throw new Error('Failed to remove website');
+                }
+                setWebsites(websites.filter(website => website.id !== id));
+                setWebsiteCount(websiteCount ? websiteCount - 1 : 0);
+                toast.success('Website removed successfully');
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to remove website');
+            }
+        }
+        removeWebsite();
     };
 
     return (
@@ -69,6 +108,7 @@ const Home: React.FC = () => {
                     <button
                         onClick={() => setIsAddingWebsite(true)}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
+                        disabled={websiteCount === 10}
                     >
                         Add Website
                     </button>
@@ -91,8 +131,8 @@ const Home: React.FC = () => {
                             <input
                                 type="url"
                                 id="websiteUrl"
-                                value={newWebsiteUrl}
-                                onChange={(e) => setNewWebsiteUrl(e.target.value)}
+                                value={newWebsiteUrl.url}
+                                onChange={(e) => setNewWebsiteUrl({ url: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="https://example.com"
                                 required
@@ -104,6 +144,7 @@ const Home: React.FC = () => {
                             <button
                                 onClick={() => {
                                     setIsAddingWebsite(false);
+                                    setNewWebsiteUrl({url:""});
                                     setError('');
                                 }}
                                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md"
@@ -120,7 +161,12 @@ const Home: React.FC = () => {
                     </div>
                 )}
 
-                {websites.length === 0 ? (
+                {loading ? (
+                    <div>
+                        <BarLoader color="#0aa4cc" height={10} loading width={400} />
+                        <p className="text-gray-500 text-sm">Loading...</p>
+                    </div>
+                ) : websiteCount === 0 ? (
                     <div className="bg-white rounded-lg shadow-md p-8 text-center">
                         <h2 className="text-xl font-medium text-gray-700 mb-2">No websites added yet</h2>
                         <p className="text-gray-500 mb-4">Add your first website to start monitoring</p>

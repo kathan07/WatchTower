@@ -127,7 +127,7 @@ const addWebsite = async (
         }
 
 
-        await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const website = await tx.website.upsert({
                 where: { url: normalizedUrl },
                 update: {},
@@ -160,11 +160,16 @@ const addWebsite = async (
                     );
                 }
             }
+
+            return website;
         });
 
         res.status(201).json({
             success: true,
-            message: 'Website added successfully'
+            website: {
+                id: result.id,
+                url: result.url
+            }
         });
 
     } catch (error) {
@@ -190,7 +195,6 @@ const getWebsites = async (
                     select: {
                         id: true,
                         url: true,
-                        createdAt: true
                     }
                 }
             }
@@ -376,4 +380,102 @@ const getAnalytics = async (
     }
 };
 
-export { addWebsite, removeWebsite, getAnalytics, getWebsites };
+
+const getDailyReports = async (
+    req: GetAnalyticsRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const userId = req.user.id;
+        const websiteId = req.params.websiteId;
+        const currentDate = new Date();
+
+        // Calculate date range for the last month (30 days)
+        const endDate = endOfDay(subDays(currentDate, 1)); // Yesterday end
+        const startDate = startOfDay(subDays(currentDate, 30)); // 30 days ago start
+
+        // Check if the website exists and belongs to the user's active monitor
+        const website = await prisma.website.findFirst({
+            where: {
+                id: websiteId,
+                monitors: {
+                    some: {
+                        userId,
+                        isActive: true
+                    }
+                }
+            },
+            select: {
+                id: true,
+                url: true,
+                monitors: {
+                    where: {
+                        userId,
+                        isActive: true
+                    },
+                    select: {
+                        id: true
+                    },
+                    take: 1
+                }
+            }
+        });
+
+        if (!website) {
+            return next(errorHandler(404, 'Website not found or not associated with an active monitor'));
+        }
+
+        const monitorId = website.monitors[0]?.id;
+
+        // Get daily analytics for the last month
+        const dailyReports = await prisma.analytics.findMany({
+            where: {
+                websiteId,
+                periodType: 'DAILY',
+                date: {
+                    gte: startDate,
+                    lte: endDate
+                }
+            },
+            select: {
+                date: true,
+                avgResponseTime: true,
+                avgUptime: true,
+                avgDowntime: true,
+                avgDegradedTime: true
+            },
+            orderBy: {
+                date: 'asc'
+            }
+        });
+
+        // Format the results
+        const formattedReports = dailyReports.map(report => ({
+            date: report.date,
+            ...formatMetrics(report)
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: {
+                monitorId,
+                website: {
+                    websiteId: website.id,
+                    url: website.url,
+                    timeframe: {
+                        start: startDate,
+                        end: endDate
+                    },
+                    dailyReports: formattedReports,
+                }
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+export { addWebsite, removeWebsite, getAnalytics, getWebsites, getDailyReports};

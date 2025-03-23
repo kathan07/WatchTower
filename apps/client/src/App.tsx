@@ -20,6 +20,7 @@ function App() {
             <Route path="/plans" element={<Plans />} />
             <Route element={<SubscribedRoute />}>
               <Route path="/" element={<Home />} />
+              <Route path="/analytics/:websiteId" element={<h1>Analytics</h1>} />
             </Route>
           </Route>
           <Route path="*" element={<PageNotFound />} />
