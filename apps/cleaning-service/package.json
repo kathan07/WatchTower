@@ -1,5 +1,6 @@
 {
   "name": "cleaning-service",
+  "packageManager": "npm@10.9.0",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {

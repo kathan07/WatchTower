@@ -2,6 +2,7 @@
   "name": "scheduler-service",
   "version": "1.0.0",
   "main": "index.js",
+  "packageManager": "npm@10.9.0",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
