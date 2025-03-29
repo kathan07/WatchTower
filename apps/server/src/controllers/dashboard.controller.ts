@@ -393,7 +393,7 @@ const getDailyReports = async (
 
         // Calculate date range for the last month (30 days)
         const endDate = endOfDay(subDays(currentDate, 1)); // Yesterday end
-        const startDate = startOfDay(subDays(currentDate, 30)); // 30 days ago start
+        const startDate = startOfDay(subDays(currentDate, 5)); // 5 days ago start
 
         // Check if the website exists and belongs to the user's active monitor
         const website = await prisma.website.findFirst({

@@ -5,7 +5,7 @@ RUN apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm install -g turbo
 COPY . .
-RUN turbo prune alerting-service --docker
+RUN turbo prune analysis-service --docker
 
 FROM base AS installer
 RUN apk update && apk add --no-cache libc6-compat
@@ -20,4 +20,4 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nodejs
 USER nodejs
 COPY --from=installer /app .
-CMD ["npm", "run", "start", "--prefix", "full/apps/alerting-service"]
+CMD ["npm", "run", "start", "--prefix", "full/apps/analysis-service"]

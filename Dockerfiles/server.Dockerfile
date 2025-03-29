@@ -5,12 +5,12 @@ RUN apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm install -g turbo
 COPY . .
-RUN turbo prune alerting-service --docker
+RUN turbo prune server --docker
 
 FROM base AS installer
 RUN apk update && apk add --no-cache libc6-compat
 WORKDIR /app
-COPY --from=builder /app/out . 
+COPY --from=builder /app/out .
 RUN npm ci --prefix json & npm i --prefix full && wait
 RUN npx prisma generate --schema=full/packages/prisma-client/prisma/schema.prisma
 RUN npm run build --prefix full
@@ -20,4 +20,6 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nodejs
 USER nodejs
 COPY --from=installer /app .
-CMD ["npm", "run", "start", "--prefix", "full/apps/alerting-service"]
+ENV PORT=3000
+EXPOSE 3000
+CMD ["npm", "run", "start", "--prefix", "full/apps/server"]
