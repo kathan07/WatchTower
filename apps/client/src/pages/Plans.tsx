@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import PriceCard from '../components/PriceCard';
 import Navbar from '../components/Navbar';
 import { useUser } from '../contexts/userContext';
+import { loadStripe } from '@stripe/stripe-js';
+import axios from 'axios';
 
-export interface SubscriptionPlan {
+interface SubscriptionPlan {
     id: string;
     name: string;
     price: number;
@@ -13,7 +15,6 @@ export interface SubscriptionPlan {
 }
 
 const Plans: React.FC = () => {
-    const navigate = useNavigate();
     const { user } = useUser();
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
@@ -39,11 +40,31 @@ const Plans: React.FC = () => {
         }
     ];
 
-    const handleSubscribe = (planId: string) => {
+    const handleSubscribe = async (planId: string): Promise<void> => {
         setSelectedPlan(planId);
-        // In a real app, you would process the payment here
-        // For now, just redirect to the websites page
-        navigate('/websites');
+        const stripe = await loadStripe('pk_test_51R7yMnC0RHxlNzZ115KU9T2NE2dU12j2laxS2QzyGTmM2THwNlSUas9JhgrJVg7ACuROYdVTIfA0iv6AwE5n8jB600OOlpRdcy');
+        
+        if (!stripe) {
+            throw new Error('Failed to load Stripe');
+        }
+
+        const purchasedPlan = plans.find(plan => plan.id === planId);
+        if (!purchasedPlan) {
+            throw new Error('Plan not found');
+        }
+
+        try {
+            const response = await axios.post("/api/subscribe/checkout", purchasedPlan);
+            const result = await stripe.redirectToCheckout({
+                sessionId: response.data.session.id
+            });
+
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+        } catch (error) {
+            console.error("Error with Stripe checkout:", error);
+        }
     };
 
     return (

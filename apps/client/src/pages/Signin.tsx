@@ -47,7 +47,6 @@ const SignIn: React.FC = () => {
         try {
             const res = await axios.post('/api/auth/login', formData);
             if (res.data.success) {
-                localStorage.setItem('user', JSON.stringify(res.data.user));
                 updateUser(res.data.user);
                 toast.success('Sign in successful!');
                 if (res.data.user.subscriptionStatus){

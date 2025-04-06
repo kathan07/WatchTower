@@ -287,7 +287,44 @@ const getActiveSubscriptions = async (userId: string, currentDate: Date) => {
     return subscription;
 }
 
+const buySubscription = async (userId: string, planId: string, validity: number): Promise<boolean> => {
+    const timeperiod = new Map<number, number>([
+        [3, 92],
+        [6, 183],
+        [12, 365]
+    ]);
+    const expirationDate = new Date();
+    try {
+        expirationDate.setDate(expirationDate.getDate() + timeperiod.get(validity)!);
+        await prisma.subscription.upsert({
+            where: { userId },
+            update: {
+                type: SubType[planId.toUpperCase() as keyof typeof SubType],
+                isActive: true,
+                startDate: new Date(),
+                expirationDate: expirationDate
+            },
+            create: {
+                userId: userId,
+                isActive: true,
+                startDate: new Date(),
+                expirationDate: expirationDate,
+                type: SubType[planId.toUpperCase() as keyof typeof SubType],
+            }
+        });
+        await prisma.monitor.update({
+            where: { userId },
+            data: { isActive: true }
+        });
+        return true;
+
+    } catch (error) {
+        return false;
+    }
+
+}
+
 
 export type { User };
-export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, getActiveSubscriptions, Status, AnalyticsPeriod, AlertType, AlertStatus, SubType};
+export { prisma, userExists, createUser, cleanLogs, cleanAnalytics, getExpiredSubscriptions, deactivateSubscriptionAndMonitor, connectDb, disconnectDb, getActiveWebsites, getAvgResponseTime, getStatusCounts, createAnalytics, addLog, getActiveWebsitesWithMonitors, getRecentLogs, createAlert, getActiveMonitorsWithWebsitesAndUsers, createMonitor, getActiveSubscriptions, Status, AnalyticsPeriod, AlertType, AlertStatus, SubType, buySubscription };
 
