@@ -10,6 +10,7 @@ import SubscribedRoute from "./components/SubscribedRoute"
 import Home from "./pages/Home"
 import Cancel from "./pages/Cancel"
 import Success from "./pages/Success"
+import Analytics from "./pages/Analytics"
 
 function App() {
   return (
@@ -24,7 +25,7 @@ function App() {
             <Route path="/cancel" element={<Cancel/>} />
             <Route element={<SubscribedRoute />}>
               <Route path="/" element={<Home />} />
-              <Route path="/analytics/:websiteId" element={<h1>Analytics</h1>} />
+              <Route path="/analytics/:websiteId" element={<Analytics/>} />
             </Route>
           </Route>
           <Route path="*" element={<PageNotFound />} />

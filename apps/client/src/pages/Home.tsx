@@ -70,6 +70,7 @@ const Home: React.FC = () => {
                 throw new Error('Failed to add website');
             }
             setWebsites([...websites, response.data.website]);
+            getWebsites();
 
         } catch (error) {
             console.error(error);

@@ -30,6 +30,9 @@ interface GetAnalyticsRequest extends UserRequest {
     params: {
         websiteId: string;
     };
+    query: {
+        timeRange?: string;
+    }
 }
 
 // Other interfaces
@@ -387,13 +390,14 @@ const getDailyReports = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const userId = req.user.id;
-        const websiteId = req.params.websiteId;
+        const userId: string = req.user.id;
+        const websiteId: string = req.params.websiteId;
+        const timeRange: string = req.query.timeRange || '5'; // Default to 7 days if not provided
         const currentDate = new Date();
 
         // Calculate date range for the last month (30 days)
         const endDate = endOfDay(subDays(currentDate, 1)); // Yesterday end
-        const startDate = startOfDay(subDays(currentDate, 5)); // 5 days ago start
+        const startDate = startOfDay(subDays(currentDate, +timeRange)); // 5 days ago start
 
         // Check if the website exists and belongs to the user's active monitor
         const website = await prisma.website.findFirst({
@@ -452,7 +456,7 @@ const getDailyReports = async (
 
         // Format the results
         const formattedReports = dailyReports.map(report => ({
-            date: report.date,
+            date: `${report.date.getFullYear()}-${String(report.date.getMonth() + 1).padStart(2, '0')}-${String(report.date.getDate()).padStart(2, '0')}`,
             ...formatMetrics(report)
         }));
 
@@ -478,4 +482,4 @@ const getDailyReports = async (
 
 
 
-export { addWebsite, removeWebsite, getAnalytics, getWebsites, getDailyReports};
+export { addWebsite, removeWebsite, getAnalytics, getWebsites, getDailyReports };
