@@ -1,0 +1,13 @@
+name: Shared Code Deployment
+
+on:
+  push:
+    branches: [main]
+    # Trigger only when files OUTSIDE these paths change
+    paths-ignore:
+      - 'apps/**'
+      - 'Dockerfiles/**'
+
+jobs:
+  deploy-shared-code:
+    uses: ./.github/workflows/full-deployment.yml

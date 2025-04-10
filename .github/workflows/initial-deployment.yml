@@ -1,0 +1,8 @@
+name: Initial Full Deployment
+
+on:
+  workflow_dispatch:  # Manual trigger for first deployment
+
+jobs:
+  deploy-all:
+    uses: ./.github/workflows/full-deployment.yml

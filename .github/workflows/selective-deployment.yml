@@ -1,0 +1,129 @@
+name: Smart Selective Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+
+jobs:
+  analyze-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - id: set-matrix
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^apps/' || echo "")
+          SERVICES=()
+
+          for SERVICE in client server alerting-service analysis-service cleaning-service monitoring-service scheduler-service; do
+            if echo "$CHANGED" | grep -q "^apps/$SERVICE/"; then
+              SERVICES+=("$SERVICE")
+            fi
+          done
+
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "matrix={\"service\":[]}" >> $GITHUB_OUTPUT
+          else
+            MATRIX=$(printf '"%s",' "${SERVICES[@]}" | sed 's/,$//')
+            echo "matrix={\"service\":[$MATRIX]}" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-deploy:
+    needs: analyze-changes
+    if: ${{ fromJson(needs.analyze-changes.outputs.matrix).service[0] != null }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.analyze-changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/${{ matrix.service }}
+          file: Dockerfiles/${{ matrix.service }}.Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+
+      - name: Deploy ${{ matrix.service }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DOCKER_HOST }}
+          username: ${{ secrets.DOCKER_USER }}
+          key: ${{ secrets.DOCKER_KEY }}
+          script: |
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+            
+            # Service-specific environment variables
+            if [ "${{ matrix.service }}" = "client" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "API_URL=${{ secrets.CLIENT_API_URL }}" \
+                --env-add "CLIENT_ENV=${{ secrets.CLIENT_ENV }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "server" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.SERVER_DB_URL }}" \
+                --env-add "REDIS_URL=${{ secrets.SERVER_REDIS_URL }}" \
+                --env-add "JWT_SECRET=${{ secrets.SERVER_JWT_SECRET }}" \
+                --env-add "SERVER_ENV=${{ secrets.SERVER_ENV }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "alerting-service" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.ALERTING_DB_URL }}" \
+                --env-add "REDIS_URL=${{ secrets.ALERTING_REDIS_URL }}" \
+                --env-add "SMTP_HOST=${{ secrets.ALERTING_SMTP_HOST }}" \
+                --env-add "SMTP_PORT=${{ secrets.ALERTING_SMTP_PORT }}" \
+                --env-add "SMTP_USER=${{ secrets.ALERTING_SMTP_USER }}" \
+                --env-add "SMTP_PASS=${{ secrets.ALERTING_SMTP_PASS }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "analysis-service" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.ANALYSIS_DB_URL }}" \
+                --env-add "REDIS_URL=${{ secrets.ANALYSIS_REDIS_URL }}" \
+                --env-add "MODEL_PATH=${{ secrets.ANALYSIS_MODEL_PATH }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "cleaning-service" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.CLEANING_DB_URL }}" \
+                --env-add "RETENTION_DAYS=${{ secrets.CLEANING_RETENTION_DAYS }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "monitoring-service" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.MONITORING_DB_URL }}" \
+                --env-add "METRICS_PORT=${{ secrets.MONITORING_METRICS_PORT }}" \
+                --env-add "ALERT_THRESHOLD=${{ secrets.MONITORING_ALERT_THRESHOLD }}" \
+                myapp_${{ matrix.service }}
+            
+            elif [ "${{ matrix.service }}" = "scheduler-service" ]; then
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+                --env-add "DB_URL=${{ secrets.SCHEDULER_DB_URL }}" \
+                --env-add "REDIS_URL=${{ secrets.SCHEDULER_REDIS_URL }}" \
+                --env-add "CRON_TIMEZONE=${{ secrets.SCHEDULER_CRON_TIMEZONE }}" \
+                myapp_${{ matrix.service }}
+            fi
