@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import PriceCard from '../components/PriceCard';
 import Navbar from '../components/Navbar';
 import { useUser } from '../contexts/userContext';
@@ -16,7 +15,6 @@ interface SubscriptionPlan {
 
 const Plans: React.FC = () => {
     const { user } = useUser();
-    const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
     const plans: SubscriptionPlan[] = [
         {
@@ -41,7 +39,6 @@ const Plans: React.FC = () => {
     ];
 
     const handleSubscribe = async (planId: string): Promise<void> => {
-        setSelectedPlan(planId);
         const stripe = await loadStripe('pk_test_51R7yMnC0RHxlNzZ115KU9T2NE2dU12j2laxS2QzyGTmM2THwNlSUas9JhgrJVg7ACuROYdVTIfA0iv6AwE5n8jB600OOlpRdcy');
         
         if (!stripe) {
