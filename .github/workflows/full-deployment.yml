@@ -27,80 +27,76 @@ jobs:
             docker buildx build \
               -f Dockerfiles/${service}.Dockerfile \
               -t ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest \
-              ./apps/$service \
+              . \
               --push
           done
 
-      - name: Deploy All Services
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.DOCKER_HOST }}
-          username: ${{ secrets.DOCKER_USER }}
-          key: ${{ secrets.DOCKER_KEY }}
-          script: |
-            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+      # - name: Deploy All Services
+      #   uses: appleboy/ssh-action@v1.0.0
+      #   with:
+      #     host: ${{ secrets.DOCKER_HOST }}
+      #     username: ${{ secrets.DOCKER_USER }}
+      #     key: ${{ secrets.DOCKER_KEY }}
+      #     script: |
+      #       docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-            # Deploy client service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/client:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/client:latest \
-              --env-add "API_URL=${{ secrets.CLIENT_API_URL }}" \
-              --env-add "CLIENT_ENV=${{ secrets.CLIENT_ENV }}" \
-              myapp_client
+      #       # Deploy client service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/client:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/client:latest \
+      #         --env-add "SERVER_URL_DEPLOY=${{ secrets.SERVER_URL_DEPLOY }}" \
+      #         client
 
-            # Deploy server service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/server:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/server:latest \
-              --env-add "DB_URL=${{ secrets.SERVER_DB_URL }}" \
-              --env-add "REDIS_URL=${{ secrets.SERVER_REDIS_URL }}" \
-              --env-add "JWT_SECRET=${{ secrets.SERVER_JWT_SECRET }}" \
-              --env-add "SERVER_ENV=${{ secrets.SERVER_ENV }}" \
-              myapp_server
+      #       # Deploy server service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/server:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/server:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         --env-add "REDIS_URL=${{ secrets.REDIS_URL }}" \
+      #         --env-add "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
+      #         --env-add "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+      #         --env-add "STRIPE_API_KEY"=${{ secrets.STRIPE_API_KEY }} \
+      #         server
 
-            # Deploy alerting-service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/alerting-service:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/alerting-service:latest \
-              --env-add "DB_URL=${{ secrets.ALERTING_DB_URL }}" \
-              --env-add "REDIS_URL=${{ secrets.ALERTING_REDIS_URL }}" \
-              --env-add "SMTP_HOST=${{ secrets.ALERTING_SMTP_HOST }}" \
-              --env-add "SMTP_PORT=${{ secrets.ALERTING_SMTP_PORT }}" \
-              --env-add "SMTP_USER=${{ secrets.ALERTING_SMTP_USER }}" \
-              --env-add "SMTP_PASS=${{ secrets.ALERTING_SMTP_PASS }}" \
-              myapp_alerting-service
+      #       # Deploy alerting-service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/alerting-service:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/alerting-service:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         --env-add "REDIS_URL=${{ secrets.REDIS_URL }}" \
+      #         --env-add "SMTP_HOST=${{ secrets.SMTP_HOST }}" \
+      #         --env-add "SMTP_PORT=${{ secrets.SMTP_PORT }}" \
+      #         --env-add "SMTP_SECURE=${{ secrets.SMTP_SECURE }}" \
+      #         --env-add "SMTP_USER=${{ secrets.SMTP_USER }}" \
+      #         --env-add "SMTP_PASS=${{ secrets.SMTP_PASS }}" \
+      #         alerting-service
 
-            # Deploy analysis-service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/analysis-service:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/analysis-service:latest \
-              --env-add "DB_URL=${{ secrets.ANALYSIS_DB_URL }}" \
-              --env-add "REDIS_URL=${{ secrets.ANALYSIS_REDIS_URL }}" \
-              --env-add "MODEL_PATH=${{ secrets.ANALYSIS_MODEL_PATH }}" \
-              myapp_analysis-service
+      #       # Deploy analysis-service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/analysis-service:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/analysis-service:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         analysis-service
 
-            # Deploy cleaning-service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cleaning-service:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/cleaning-service:latest \
-              --env-add "DB_URL=${{ secrets.CLEANING_DB_URL }}" \
-              --env-add "RETENTION_DAYS=${{ secrets.CLEANING_RETENTION_DAYS }}" \
-              myapp_cleaning-service
+      #       # Deploy cleaning-service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cleaning-service:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/cleaning-service:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         cleaning-service
 
-            # Deploy monitoring-service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/monitoring-service:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/monitoring-service:latest \
-              --env-add "DB_URL=${{ secrets.MONITORING_DB_URL }}" \
-              --env-add "METRICS_PORT=${{ secrets.MONITORING_METRICS_PORT }}" \
-              --env-add "ALERT_THRESHOLD=${{ secrets.MONITORING_ALERT_THRESHOLD }}" \
-              myapp_monitoring-service
+      #       # Deploy monitoring-service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/monitoring-service:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/monitoring-service:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         --env-add "REDIS_URL=${{ secrets.REDIS_URL }}" \
+      #         monitoring-service
 
-            # Deploy scheduler-service
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/scheduler-service:latest
-            docker service update \
-              --image ${{ secrets.DOCKERHUB_USERNAME }}/scheduler-service:latest \
-              --env-add "DB_URL=${{ secrets.SCHEDULER_DB_URL }}" \
-              --env-add "REDIS_URL=${{ secrets.SCHEDULER_REDIS_URL }}" \
-              --env-add "CRON_TIMEZONE=${{ secrets.SCHEDULER_CRON_TIMEZONE }}" \
-              myapp_scheduler-service
+      #       # Deploy scheduler-service
+      #       docker pull ${{ secrets.DOCKERHUB_USERNAME }}/scheduler-service:latest
+      #       docker service update \
+      #         --image ${{ secrets.DOCKERHUB_USERNAME }}/scheduler-service:latest \
+      #         --env-add "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+      #         --env-add "REDIS_URL=${{ secrets.REDIS_URL }}" \
+      #         scheduler-service
