@@ -59,6 +59,7 @@ const Home: React.FC = () => {
                 throw new Error();
             }
         } catch (e) {
+            console.error(e);
             setError('Please enter a valid URL');
             return;
         }
