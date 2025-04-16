@@ -15,12 +15,15 @@
   "dependencies": {
     "@repo/prisma": "^1.0.0",
     "@repo/redis": "^1.0.0",
-    "@repo/typescript-config": "^0.0.0",
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "bull": "^4.16.5",
-    "bullmq": "^5.40.4",
+    "bullmq": "^5.40.4"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "^0.0.0",
+    "@types/node": "^22.14.1",
     "nodemon": "^3.1.9",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.3"
   }
 }

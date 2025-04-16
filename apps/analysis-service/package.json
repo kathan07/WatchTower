@@ -14,12 +14,13 @@
   "description": "",
   "dependencies": {
     "@repo/prisma": "^1.0.0",
-    "@repo/typescript-config": "^0.0.0",
     "cron": "^3.5.0",
-    "date-fns": "^4.1.0",
-    "typescript": "^5.7.3"
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "@repo/typescript-config": "^0.0.0",
+    "@types/node": "^22.14.1",
+    "nodemon": "^3.1.9",
+    "typescript": "^5.8.3"
   }
 }
