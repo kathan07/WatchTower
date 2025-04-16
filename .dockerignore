@@ -1,1 +1,8 @@
 node_modules
+.git
+.github
+.next
+**/node_modules
+**/dist
+**/build
+**/.turbo

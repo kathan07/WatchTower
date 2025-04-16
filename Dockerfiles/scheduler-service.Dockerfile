@@ -1,23 +1,52 @@
 FROM node:20-alpine AS base
 
 FROM base AS builder
-RUN apk update && apk add --no-cache libc6-compat
+RUN apk update
+RUN apk add --no-cache libc6-compat
+# Set working directory
 WORKDIR /app
-RUN npm install -g turbo
+# Install turbo globally
+RUN npm install turbo --global
 COPY . .
+# Generate a partial monorepo with a pruned lockfile for the target workspace
 RUN turbo prune scheduler-service --docker
 
 FROM base AS installer
-RUN apk update && apk add --no-cache libc6-compat
+RUN apk update
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY --from=builder /app/out . 
-RUN npm ci --prefix json & npm i --prefix full && wait
-RUN npx prisma generate --schema=full/packages/prisma-client/prisma/schema.prisma
-RUN npm run build --prefix full
+# First install the dependencies (as they change less often)
+COPY --from=builder /app/out/json/ .
+RUN npm ci
+# Copy full source code for the pruned workspace
+COPY --from=builder /app/out/full/ .
+# Generate Prisma client before building
+RUN npx prisma generate --schema=./packages/prisma-client/prisma/schema.prisma
+# Build the project
+RUN npx turbo run build
 
 FROM base AS runner
 WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nodejs
-USER nodejs
-COPY --from=installer /app .
-CMD ["npm", "run", "start", "--prefix", "full/apps/scheduler-service"]
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodeuser
+
+# Copy package.json files and built files
+COPY --from=installer --chown=nodeuser:nodejs /app/apps/scheduler-service/dist ./dist
+COPY --from=installer --chown=nodeuser:nodejs /app/apps/scheduler-service/package.json .
+
+# Copy the entire node_modules including workspace packages
+COPY --from=installer --chown=nodeuser:nodejs /app/node_modules ./node_modules
+
+# Copy the built prisma client package
+COPY --from=installer --chown=nodeuser:nodejs /app/packages/prisma-client ./node_modules/@repo/prisma
+COPY --from=installer --chown=nodeuser:nodejs /app/packages/redis-client ./node_modules/@repo/redis
+
+# Copy Prisma schema and generated client to ensure it's available at runtime
+# COPY --from=installer --chown=nodeuser:nodejs /app/packages/prisma-client/prisma ./prisma
+# COPY --from=installer --chown=nodeuser:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
+USER nodeuser
+
+
+CMD ["npm", "run", "start"]
