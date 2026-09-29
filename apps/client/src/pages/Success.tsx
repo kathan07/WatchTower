@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import { useUser } from '../contexts/userContext';
+import { useUser } from '../contexts/user-context';
+import { subscribeApi } from '@repo/shared';
 
 interface SessionData {
   id: string;
@@ -36,7 +37,7 @@ const Success: React.FC = () => {
           return;
         }
 
-        const response = await axios.get(`/api/subscribe/session/${sessionId}`);
+        const response = await axios.get(subscribeApi.session(sessionId));
 
         if (response.data.success) {
           const sessionData = response.data.session;

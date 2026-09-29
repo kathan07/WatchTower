@@ -1,17 +1,9 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-
-interface User {
-    id: string;
-    username: string;
-    email: string;
-    createdAt: Date;
-    subscriptionStatus: boolean;
-    subscriptionType?: string;
-}
+import type { PublicUser } from '@repo/shared';
 
 interface UserContextType {
-    user: User | null;
-    updateUser: (userData: User) => void;
+    user: PublicUser | null;
+    updateUser: (userData: PublicUser) => void;
     clearUser: () => void;
     isLoading: boolean;
 }
@@ -23,8 +15,9 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
-    const [user, setUser] = useState<User | null>(() => {
-        const storedUser: string | null = localStorage.getItem("user");
+    // Persist auth user across reloads; cookie alone is httpOnly so UI needs local mirror.
+    const [user, setUser] = useState<PublicUser | null>(() => {
+        const storedUser = localStorage.getItem('user');
         return storedUser ? JSON.parse(storedUser) : null;
     });
     const [isLoading, setIsLoading] = useState(true);
@@ -33,14 +26,14 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         setIsLoading(false);
     }, []);
 
-    const updateUser = (userData: User) => {
+    const updateUser = (userData: PublicUser) => {
         setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(userData));
     };
 
     const clearUser = () => {
         setUser(null);
-        localStorage.removeItem("user");
+        localStorage.removeItem('user');
     };
 
     return (

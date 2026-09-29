@@ -4,14 +4,15 @@ import Navbar from '../components/Navbar';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BarLoader } from 'react-spinners';
+import {
+    MAX_WEBSITES_PER_MONITOR,
+    dashboardApi,
+    type WebsiteSummary,
+} from '@repo/shared';
 
 const Home: React.FC = () => {
-    interface Website {
-        id: string;
-        url: string;
-    }
 
-    const [websites, setWebsites] = useState<Website[]>([]);
+    const [websites, setWebsites] = useState<WebsiteSummary[]>([]);
     const [websiteCount, setWebsiteCount] = useState<number>();
     const [newWebsiteUrl, setNewWebsiteUrl] = useState({
         url: "",
@@ -23,7 +24,7 @@ const Home: React.FC = () => {
     const getWebsites = async () => {
         try {
             setLoading(true);
-            const websiteData = await axios.get('/api/dashboard/getWebsites');
+            const websiteData = await axios.get(dashboardApi.getWebsites());
             if (websiteData.data.success) {
                 setWebsiteCount(websiteData.data.data.websiteCount);
                 setWebsites(websiteData.data.data.websites);
@@ -49,8 +50,8 @@ const Home: React.FC = () => {
             setError('Please enter URL');
             return;
         }
-        if (websiteCount === 10) {
-            setError('Maximum limit of 10 websites reached');
+        if (websiteCount === MAX_WEBSITES_PER_MONITOR) {
+            setError(`Maximum limit of ${MAX_WEBSITES_PER_MONITOR} websites reached`);
             return;
         }
         try {
@@ -66,7 +67,7 @@ const Home: React.FC = () => {
 
 
         try {
-            const response = await axios.post("api/dashboard/addwebsite", newWebsiteUrl);
+            const response = await axios.post(dashboardApi.addWebsite(), newWebsiteUrl);
             if (!response.data.success) {
                 throw new Error('Failed to add website');
             }
@@ -86,7 +87,7 @@ const Home: React.FC = () => {
     const handleRemoveWebsite = (id: string) => {
         const removeWebsite = async () => {
             try {
-                const response = await axios.post(`/api/dashboard/removeWebsite/${id}`);
+                const response = await axios.post(dashboardApi.removeWebsite(id));
                 if (!response.data.success) {
                     throw new Error('Failed to remove website');
                 }

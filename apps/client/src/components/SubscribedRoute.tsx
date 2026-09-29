@@ -1,5 +1,5 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { useUser } from '../contexts/userContext';
+import { useUser } from '../contexts/user-context';
 
 const SubscribedRoute: React.FC = () => {
     const { user } = useUser();

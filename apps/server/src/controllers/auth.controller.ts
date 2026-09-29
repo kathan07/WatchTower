@@ -1,55 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import { userExists, createUser, createMonitor, getActiveSubscriptions, SubType } from '@repo/prisma';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import errorHandler from '../utils/error'
-
-
-// Request body interfaces
-interface RegisterRequestBody {
-    username: string;
-    email: string;
-    password: string;
-}
-
-interface LoginRequestBody {
-    email: string;
-    password: string;
-}
-
-interface BaseUser {
-    id: string;
-    username: string;
-    email: string;
-    createdAt: Date;
-}
-
-interface User extends BaseUser {
-    password: string;
-}
-
-interface UserWithSubscription extends BaseUser {
-    subscriptionStatus: boolean;
-    subscriptionType?: SubType;
-}
+import type { LoginInput, RegisterInput } from '@repo/shared';
+import { loginUser, registerUser } from '../services/auth.service';
 
 const register = async (
-    req: Request<{}, {}, RegisterRequestBody>,
+    req: Request<{}, {}, RegisterInput>,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
-        const { username, email, password } = req.body;
-        const existingUser = await userExists(email);
-        if (existingUser) {
-            return next(errorHandler(400, "User already exists"));
-        }
-        const hashedPassword = await bcrypt.hashSync(password, 10);
-        const user = await createUser(username, hashedPassword, email);
-        await createMonitor(user.id);
+        await registerUser(req.body);
         res.status(201).json({
             success: true,
-            message: "User created successfully"
+            message: 'User created successfully',
         });
     } catch (error) {
         next(error);
@@ -57,55 +19,21 @@ const register = async (
 };
 
 const login = async (
-    req: Request<{}, {}, LoginRequestBody>,
+    req: Request<{}, {}, LoginInput>,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
-        const { email, password } = req.body;
-
-        const validUser = await userExists(email);
-        if (!validUser) {
-            return next(errorHandler(404, "User not found"));
-        }
-        const validPassword = await bcrypt.compareSync(password, validUser.password);
-        if (!validPassword) {
-            return next(errorHandler(401, "Wrong credentials")); // Changed to 401 for authentication error
-        }
-        const token = jwt.sign(
-            { id: validUser.id },
-            process.env.JWT_SECRET as string,
-            { expiresIn: '1d' } // Added token expiration
-        );
-
-        // Create a copy of user without password
-        const { password: _, ...baseUser } = validUser;
-        const userId = baseUser.id;
-        const currentDate = new Date();
-        const subscription = await getActiveSubscriptions(userId, currentDate);
-        let userWithoutPassword: UserWithSubscription;
-        if (subscription === null) {
-            userWithoutPassword = {
-                ...baseUser,
-                subscriptionStatus: false
-            }
-        }
-        else {
-            userWithoutPassword = {
-                ...baseUser,
-                subscriptionStatus: true,
-                subscriptionType: subscription.type
-            }
-        }
+        const { token, user } = await loginUser(req.body);
         res
-            .cookie("access_token", token, {
+            .cookie('access_token', token, {
                 httpOnly: true,
-                maxAge: 24 * 60 * 60 * 1000 // 1 day
+                maxAge: 24 * 60 * 60 * 1000,
             })
             .status(200)
             .json({
                 success: true,
-                user: userWithoutPassword
+                user,
             });
     } catch (error) {
         next(error);
@@ -113,16 +41,13 @@ const login = async (
 };
 
 const logout = async (
-    req: Request,
+    _req: Request,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     try {
-        res.clearCookie("access_token", {
-            httpOnly: true,
-        });
-
-        res.status(200).json("User has been logged out!");
+        res.clearCookie('access_token', { httpOnly: true });
+        res.status(200).json('User has been logged out!');
     } catch (error) {
         next(error);
     }

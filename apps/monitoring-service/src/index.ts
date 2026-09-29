@@ -1,32 +1,7 @@
 import { Worker, QueueEvents } from 'bullmq';
-import { addLog, connectDb, disconnectDb, Status } from '@repo/prisma';
-import axios, { AxiosError } from 'axios';
-import axiosRetry from 'axios-retry';
-import {
-    redisClient,
-    RESPONSE_TIME_THRESHOLD
-} from '@repo/redis';
-
-// Configure axios retry behavior
-axiosRetry(axios, {
-    retries: 3,
-    retryDelay: (retryCount) => {
-        return Math.max(500, axiosRetry.exponentialDelay(retryCount));
-    },
-    retryCondition: (error) => {
-        // Retry on network errors and 5xx responses
-        return (
-            axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-            (error.response?.status ? error.response.status >= 500 : false)
-        );
-    }
-});
-
-interface MonitoringJob {
-    websiteId: string;
-    url: string;
-    timeout?: number;
-}
+import { connectDb, disconnectDb } from '@repo/prisma';
+import { redisClient } from '@repo/redis';
+import { MonitoringJob, processMonitoringJob } from './processor';
 
 class MonitoringWorker {
     private worker: Worker;
@@ -36,32 +11,28 @@ class MonitoringWorker {
     constructor() {
         this.worker = new Worker<MonitoringJob>(
             'monitoring-queue',
-            async (job) => {
-                return this.processJob(job.data);
-            },
+            async (job) => processMonitoringJob(job.data, () => this.isShuttingDown),
             {
                 connection: redisClient,
                 concurrency: 5,
                 limiter: {
                     max: 100,
-                    duration: 1000
+                    duration: 1000,
                 },
-                lockDuration: 30000,         // Replaces stalledInterval
-                lockRenewTime: 15000,        // Half of lockDuration is a good practice
-                maxStalledCount: 3
+                lockDuration: 30000,
+                lockRenewTime: 15000,
+                maxStalledCount: 3,
             }
         );
 
-        // BullMQ uses separate QueueEvents for monitoring
         this.queueEvents = new QueueEvents('monitoring-queue', {
-            connection: redisClient
+            connection: redisClient,
         });
 
         this.setupWorkerEvents();
     }
 
     private setupWorkerEvents(): void {
-        // BullMQ uses different event names and structures
         this.worker.on('completed', (job) => {
             console.log(`Job ${job.id} completed for website: ${job.data.url}`);
         });
@@ -74,56 +45,9 @@ class MonitoringWorker {
             console.error('Worker error:', error);
         });
 
-        // Stalled jobs are handled through QueueEvents in BullMQ
         this.queueEvents.on('stalled', ({ jobId }) => {
             console.warn(`Job ${jobId} stalled`);
         });
-    }
-
-    private async processJob({ websiteId, url, timeout }: MonitoringJob): Promise<void> {
-        if (this.isShuttingDown) {
-            throw new Error('Worker is shutting down');
-        }
-
-        let status: Status = Status.DOWN;
-        let responseTime: number | null = null;
-        const requestTimeout = timeout ?? 30000;
-
-        try {
-            const startTime = Date.now();
-            const response = await axios.get(url, {
-                timeout: requestTimeout,
-                validateStatus: null,
-                headers: {
-                    'User-Agent': 'Website-Monitoring-Service/1.0'
-                }
-            });
-            responseTime = Date.now() - startTime;
-
-            if (response.status >= 200 && response.status < 300) {
-                status = responseTime > RESPONSE_TIME_THRESHOLD ? Status.DEGRADED : Status.UP;
-            } else if (response.status >= 400 && response.status < 500) {
-                status = Status.DOWN;
-            } else {
-                status = Status.DEGRADED;
-            }
-        } catch (error) {
-            status = Status.DOWN;
-            const axiosError = error as AxiosError;
-            console.error(`Error monitoring ${url} after retries:`, {
-                message: axiosError.message,
-                code: axiosError.code,
-                response: axiosError.response?.status,
-                retryCount: (axiosError.config as any)?._retry || 0
-            });
-        }
-
-        try {
-            await addLog(websiteId, status, responseTime);
-        } catch (error) {
-            console.error(`Error creating log for ${url}:`, error);
-            throw error;
-        }
     }
 
     public async start(): Promise<void> {
@@ -165,11 +89,11 @@ class MonitoringWorker {
                 Promise.all([
                     this.worker.close(),
                     this.queueEvents.close(),
-                    disconnectDb()
+                    disconnectDb(),
                 ]),
                 new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Shutdown timeout')), 4500)
-                )
+                ),
             ]);
 
             clearTimeout(forceExitTimeout);
@@ -183,7 +107,6 @@ class MonitoringWorker {
     }
 }
 
-// Start the worker
 const worker = new MonitoringWorker();
 void worker.start().catch((error) => {
     console.error('Failed to start monitoring worker:', error);

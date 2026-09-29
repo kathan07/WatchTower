@@ -2,15 +2,11 @@ import axios from 'axios';
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useUser } from '../contexts/userContext';
-
-interface FormData {
-    email: string;
-    password: string;
-}
+import { useUser } from '../contexts/user-context';
+import { authApi, type LoginInput } from '@repo/shared';
 
 const SignIn: React.FC = () => {
-    const [formData, setFormData] = useState<FormData>({
+    const [formData, setFormData] = useState<LoginInput>({
         email: '',
         password: '',
     });
@@ -45,9 +41,15 @@ const SignIn: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            const res = await axios.post('/api/auth/login', formData);
+            const res = await axios.post(authApi.login(), formData);
             if (res.data.success) {
-                updateUser(res.data.user);
+                updateUser({
+                    ...res.data.user,
+                    createdAt:
+                        typeof res.data.user.createdAt === 'string'
+                            ? res.data.user.createdAt
+                            : new Date(res.data.user.createdAt).toISOString(),
+                });
                 toast.success('Sign in successful!');
                 if (res.data.user.subscriptionStatus){
                     navigate('/');

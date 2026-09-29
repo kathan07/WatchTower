@@ -1,12 +1,5 @@
 import React from 'react';
-
-interface SubscriptionPlan {
-    id: string;
-    name: string;
-    price: number;
-    validity: number; // in months
-    popular?: boolean;
-}
+import type { SubscriptionPlan } from '@repo/shared';
 
 interface PriceCardProps {
     plan: SubscriptionPlan;

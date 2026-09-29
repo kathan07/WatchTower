@@ -1,0 +1,23 @@
+{
+  "name": "@repo/shared",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "packageManager": "npm@10.9.0",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "default": "./dist/index.js"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "^0.0.0",
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.3"
+  }
+}

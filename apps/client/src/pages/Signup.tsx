@@ -2,17 +2,12 @@ import axios from 'axios';
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-
-interface FormData {
-    username: string;
-    email: string;
-    password: string;
-}
+import { authApi, type RegisterInput } from '@repo/shared';
 
 const SignUp: React.FC = () => {
 
     const navigate = useNavigate();
-    const [formData, setFormData] = useState<FormData>({
+    const [formData, setFormData] = useState<RegisterInput>({
         username: '',
         email: '',
         password: '',
@@ -47,7 +42,7 @@ const SignUp: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            const res = await axios.post('/api/auth/register', formData);
+            const res = await axios.post(authApi.register(), formData);
             if (res.data.success) {
                 toast.success('Registration successful! Please sign in.');
                 navigate('/signin');

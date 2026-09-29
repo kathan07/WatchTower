@@ -1,4 +1,4 @@
-import { useUser } from "../contexts/userContext";
+import { useUser } from "../contexts/user-context";
 import { Link } from "react-router-dom";
 import React from "react";
 

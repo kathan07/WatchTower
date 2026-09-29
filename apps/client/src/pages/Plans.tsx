@@ -1,42 +1,13 @@
 import React from 'react';
 import PriceCard from '../components/PriceCard';
 import Navbar from '../components/Navbar';
-import { useUser } from '../contexts/userContext';
+import { useUser } from '../contexts/user-context';
 import { loadStripe } from '@stripe/stripe-js';
 import axios from 'axios';
-
-interface SubscriptionPlan {
-    id: string;
-    name: string;
-    price: number;
-    validity: number; // in months
-    popular?: boolean;
-}
+import { SUBSCRIPTION_PLANS, subscribeApi } from '@repo/shared';
 
 const Plans: React.FC = () => {
     const { user } = useUser();
-
-    const plans: SubscriptionPlan[] = [
-        {
-            id: 'basic',
-            name: 'BASIC',
-            price: 15.99,
-            validity: 3
-        },
-        {
-            id: 'premium',
-            name: 'PREMIUM',
-            price: 25.99,
-            validity: 6,
-            popular: true
-        },
-        {
-            id: 'enterprise',
-            name: 'ENTERPRISE',
-            price: 45.99,
-            validity: 12
-        }
-    ];
 
     const handleSubscribe = async (planId: string): Promise<void> => {
         const stripe = await loadStripe('pk_test_51R7yMnC0RHxlNzZ115KU9T2NE2dU12j2laxS2QzyGTmM2THwNlSUas9JhgrJVg7ACuROYdVTIfA0iv6AwE5n8jB600OOlpRdcy');
@@ -45,13 +16,13 @@ const Plans: React.FC = () => {
             throw new Error('Failed to load Stripe');
         }
 
-        const purchasedPlan = plans.find(plan => plan.id === planId);
+        const purchasedPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === planId);
         if (!purchasedPlan) {
             throw new Error('Plan not found');
         }
 
         try {
-            const response = await axios.post("/api/subscribe/checkout", purchasedPlan);
+            const response = await axios.post(subscribeApi.checkout(), purchasedPlan);
             const result = await stripe.redirectToCheckout({
                 sessionId: response.data.session.id
             });
@@ -81,7 +52,7 @@ const Plans: React.FC = () => {
                     </div>
                     {user!.subscriptionStatus === false ? (
                         <div className="flex lg:w-3/4 w-full flex-wrap lg:border border-gray-300 rounded-lg">
-                            {plans.map((plan) => (
+                            {SUBSCRIPTION_PLANS.map((plan) => (
                                 <PriceCard
                                     key={plan.id}
                                     plan={plan}
@@ -94,7 +65,7 @@ const Plans: React.FC = () => {
                         <div className="flex lg:w-1/3 w-full justify-center lg:border border-gray-300 rounded-lg">
                             <PriceCard
                                 key={user!.subscriptionType!.toLowerCase()}
-                                plan={plans.find((plan) => plan.id === user!.subscriptionType!.toLowerCase()) || plans[0]}
+                                plan={SUBSCRIPTION_PLANS.find((plan) => plan.id === user!.subscriptionType!.toLowerCase()) || SUBSCRIPTION_PLANS[0]}
                                 onSubscribe={() => { }}
                                 subscriptionStatus={user!.subscriptionStatus}
                             />

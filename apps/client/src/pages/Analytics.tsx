@@ -4,87 +4,37 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
+import {
+    dashboardApi,
+    type AnalyticsForWebsiteData,
+    type DailyReportPoint,
+    type DailyReportsData,
+    type PeriodAnalytics,
+} from '@repo/shared';
+
+interface DailyReportsResponse {
+    success: boolean;
+    data: DailyReportsData;
+}
+
+interface AnalyticsResponse {
+    success: boolean;
+    data: AnalyticsForWebsiteData;
+}
 
 const Analytics = () => {
     const { websiteId } = useParams<{ websiteId: string }>();
-    const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
-    const [timelyAnalytics, setTimelyAnalytics] = useState<Analytics | null>(null);
+    const [dailyReports, setDailyReports] = useState<DailyReportPoint[]>([]);
+    const [timelyAnalytics, setTimelyAnalytics] = useState<PeriodAnalytics | null>(null);
     const [websiteInfo, setWebsiteInfo] = useState<{ url: string; name?: string }>({ url: '' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    interface DailyReport {
-        date: string;
-        avgResponseTime: number;
-        avgUptime: number;
-        avgDowntime: number;
-        avgDegradedTime: number;
-    }
-
-    interface Timeframe {
-        start: string;
-        end: string;
-    }
-
-    interface WebsiteAnalytics {
-        websiteId: string;
-        url: string;
-        timeframe: Timeframe;
-        dailyReports: DailyReport[];
-    }
-
-    interface AnalyticsResponse {
-        success: boolean;
-        data: {
-            monitorId: string;
-            website: WebsiteAnalytics;
-        };
-    }
-
-    interface Analytics {
-        daily: {
-            avgResponseTime: number;
-            avgUptime: number;
-            avgDowntime: number;
-            avgDegradedTime: number;
-            date: Date;
-        } | null;
-        monthly: {
-            avgResponseTime: number;
-            avgUptime: number;
-            avgDowntime: number;
-            avgDegradedTime: number;
-            period: string;
-        } | null;
-        yearly: {
-            avgResponseTime: number;
-            avgUptime: number;
-            avgDowntime: number;
-            avgDegradedTime: number;
-            period: string;
-        } | null;
-    }
-
-    interface Reports {
-        websiteId: string;
-        url: string;
-        name?: string;
-        analytics: Analytics;
-    }
-
-    interface ReportResponse {
-        success: boolean;
-        data: {
-            monitorId: string;
-            website: Reports;
-        };
-    }
-
     const getDailyReports = async () => {
         try {
             setLoading(true);
-            const response = await axios.get<AnalyticsResponse>(
-                `/api/dashboard/getdailyreports/${websiteId}?timeRange=500`
+            const response = await axios.get<DailyReportsResponse>(
+                dashboardApi.getDailyReports(websiteId!, '500')
             );
 
             if (!response.data.success) {
@@ -111,8 +61,8 @@ const Analytics = () => {
 
     const getReports = async () => {
         try {
-            const response = await axios.get<ReportResponse>(
-                `/api/dashboard/getanalytics/${websiteId}`
+            const response = await axios.get<AnalyticsResponse>(
+                dashboardApi.getAnalytics(websiteId!)
             );
 
             if (!response.data.success) {
@@ -122,7 +72,6 @@ const Analytics = () => {
             setTimelyAnalytics(response.data.data.website.analytics);
             setWebsiteInfo({
                 url: response.data.data.website.url,
-                name: response.data.data.website.name
             });
         } catch (error) {
             console.error('Error fetching analytics:', error);
@@ -332,7 +281,7 @@ const Analytics = () => {
                                         <span className="text-gray-600">Degraded:</span>
                                         <span className="font-semibold text-yellow-600">{timelyAnalytics.yearly.avgDegradedTime}%</span>
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-2">{timelyAnalytics.yearly.period}</div>
+                                    <div className="text-xs text-gray-500 mt-2">{timelyAnalytics.yearly.year}</div>
                                 </div>
                             ) : (
                                 <p className="text-gray-500 italic">No yearly data available</p>

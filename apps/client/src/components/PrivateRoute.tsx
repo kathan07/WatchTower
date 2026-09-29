@@ -1,5 +1,5 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { useUser } from '../contexts/userContext';
+import { useUser } from '../contexts/user-context';
 import { BarLoader } from 'react-spinners';
 
 const PrivateRoute: React.FC = () => {
