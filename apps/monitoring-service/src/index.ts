@@ -1,12 +1,19 @@
 import { Worker, QueueEvents } from 'bullmq';
-import { connectDb, disconnectDb } from '@repo/prisma';
+import { connectDb, disconnectDb, prisma } from '@repo/prisma';
 import { redisClient } from '@repo/redis';
+import {
+    resolveHealthPort,
+    startProbeServer,
+    type HealthCheck,
+    type ProbeServerHandle,
+} from '@repo/shared';
 import { MonitoringJob, processMonitoringJob } from './processor';
 
 class MonitoringWorker {
     private worker: Worker;
     private queueEvents: QueueEvents;
     private isShuttingDown = false;
+    private probe: ProbeServerHandle | null = null;
 
     constructor() {
         this.worker = new Worker<MonitoringJob>(
@@ -55,6 +62,35 @@ class MonitoringWorker {
             await connectDb();
             console.log('Database connection established');
 
+            const healthPort = resolveHealthPort('monitoring-service');
+            this.probe = await startProbeServer({
+                port: healthPort,
+                service: 'monitoring-service',
+                getChecks: async () => {
+                    const checks: Record<string, HealthCheck> = {};
+                    try {
+                        await prisma.$queryRaw`SELECT 1`;
+                        checks.postgres = { status: 'up' };
+                    } catch (err) {
+                        checks.postgres = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    try {
+                        await redisClient.ping();
+                        checks.redis = { status: 'up' };
+                    } catch (err) {
+                        checks.redis = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    return checks;
+                },
+            });
+            console.log(`Probe server listening on port ${healthPort}`);
+
             await this.worker.resume();
             console.log('Monitoring worker started');
 
@@ -87,6 +123,7 @@ class MonitoringWorker {
         try {
             await Promise.race([
                 Promise.all([
+                    this.probe?.close() ?? Promise.resolve(),
                     this.worker.close(),
                     this.queueEvents.close(),
                     disconnectDb(),

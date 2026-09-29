@@ -1,5 +1,11 @@
 import { CronJob } from 'cron';
-import { connectDb, disconnectDb } from '@repo/prisma';
+import { connectDb, disconnectDb, prisma } from '@repo/prisma';
+import {
+    resolveHealthPort,
+    startProbeServer,
+    type HealthCheck,
+    type ProbeServerHandle,
+} from '@repo/shared';
 import {
     processDailyAnalytics,
     processMonthlyAnalytics,
@@ -10,6 +16,7 @@ class AnalyticsService {
     private dailyJob: CronJob;
     private monthlyJob: CronJob;
     private yearlyJob: CronJob;
+    private probe: ProbeServerHandle | null = null;
 
     constructor() {
         this.dailyJob = new CronJob('59 59 23 * * *', () => processDailyAnalytics());
@@ -35,6 +42,26 @@ class AnalyticsService {
             await connectDb();
             console.log('Database connection established');
 
+            const healthPort = resolveHealthPort('analysis-service');
+            this.probe = await startProbeServer({
+                port: healthPort,
+                service: 'analysis-service',
+                getChecks: async () => {
+                    const checks: Record<string, HealthCheck> = {};
+                    try {
+                        await prisma.$queryRaw`SELECT 1`;
+                        checks.postgres = { status: 'up' };
+                    } catch (err) {
+                        checks.postgres = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    return checks;
+                },
+            });
+            console.log(`Probe server listening on port ${healthPort}`);
+
             this.dailyJob.start();
             this.monthlyJob.start();
             this.yearlyJob.start();
@@ -57,6 +84,9 @@ class AnalyticsService {
         this.yearlyJob.stop();
 
         try {
+            if (this.probe) {
+                await this.probe.close();
+            }
             await disconnectDb();
             console.log('Cleanup completed successfully');
         } catch (error) {

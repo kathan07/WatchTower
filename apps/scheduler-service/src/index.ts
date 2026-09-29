@@ -1,12 +1,19 @@
-import { connectDb, disconnectDb } from '@repo/prisma';
+import { connectDb, disconnectDb, prisma } from '@repo/prisma';
 import { CronJob } from 'cron';
 import { redisClient } from '@repo/redis';
+import {
+    resolveHealthPort,
+    startProbeServer,
+    type HealthCheck,
+    type ProbeServerHandle,
+} from '@repo/shared';
 import { refreshWebsiteCache, scheduleMonitoringJobs } from './processor';
 
 class SchedulerService {
     private websiteRefreshJob: CronJob;
     private monitoringScheduleJob: CronJob;
     private isShuttingDown = false;
+    private probe: ProbeServerHandle | null = null;
 
     constructor() {
         this.websiteRefreshJob = new CronJob('*/30 * * * *', () => refreshWebsiteCache());
@@ -22,6 +29,35 @@ class SchedulerService {
 
             await connectDb();
             console.log('Database connection established');
+
+            const healthPort = resolveHealthPort('scheduler-service');
+            this.probe = await startProbeServer({
+                port: healthPort,
+                service: 'scheduler-service',
+                getChecks: async () => {
+                    const checks: Record<string, HealthCheck> = {};
+                    try {
+                        await prisma.$queryRaw`SELECT 1`;
+                        checks.postgres = { status: 'up' };
+                    } catch (err) {
+                        checks.postgres = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    try {
+                        await redisClient.ping();
+                        checks.redis = { status: 'up' };
+                    } catch (err) {
+                        checks.redis = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    return checks;
+                },
+            });
+            console.log(`Probe server listening on port ${healthPort}`);
 
             await refreshWebsiteCache();
 
@@ -50,6 +86,9 @@ class SchedulerService {
         this.monitoringScheduleJob.stop();
 
         try {
+            if (this.probe) {
+                await this.probe.close();
+            }
             await disconnectDb();
             await redisClient.quit();
             console.log('Cleanup completed successfully');

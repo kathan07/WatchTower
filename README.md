@@ -110,14 +110,16 @@ npx prisma migrate deploy --schema packages/prisma-client/prisma/schema.prisma
 npm run build -w @repo/shared && npm run build -w @repo/prisma && npm run build -w @repo/redis
 
 # Source env in each terminal (except client), then:
-npm run dev -w server          # http://localhost:3000
+npm run dev -w server          # http://localhost:3000  (/health, /ready)
 npm run dev -w client          # http://localhost:5173
-npm run dev -w scheduler-service
-npm run dev -w monitoring-service
-npm run dev -w alerting-service
-npm run dev -w analysis-service
-npm run dev -w cleaning-service
+npm run dev -w scheduler-service   # probes :3012
+npm run dev -w monitoring-service  # probes :3011
+npm run dev -w alerting-service    # probes :3013
+npm run dev -w analysis-service    # probes :3014
+npm run dev -w cleaning-service    # probes :3015
 ```
+
+Probes: `GET /health` (liveness, always 200) and `GET /ready` (deps; 200 or 503). API uses `PORT`; workers use `HEALTH_PORT` (see `.env.example`).
 
 `dotenv` reads `.env` from each process cwd (not the repo root). Prisma CLI reads `packages/prisma-client/.env`. Use `REDIS_URL` (not host/port split). Never commit real secrets — only `.env.example` is tracked.
 
@@ -225,7 +227,8 @@ Canonical list lives in [`.env.example`](./.env.example). Copy it into each app 
 |----------|---------|-------|
 | `DATABASE_URL` | Prisma / all DB-backed apps | PostgreSQL connection string |
 | `REDIS_URL` | `@repo/redis`, workers | Default `redis://localhost:6379` |
-| `PORT` | `apps/server` | Default `3000` |
+| `PORT` | `apps/server` | Default `3000`; also serves `/health` and `/ready` |
+| `HEALTH_PORT` | Worker services | Probe HTTP port; defaults monitoring `3011`, scheduler `3012`, alerting `3013`, analysis `3014`, cleaning `3015` |
 | `JWT_SECRET` | API auth | Long random string |
 | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` | Server subscriptions | Test keys for local |
 | `SERVER_URL_LOCAL` | Vite client proxy | API origin, e.g. `http://localhost:3000` |

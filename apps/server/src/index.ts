@@ -13,7 +13,14 @@ import {
     dashboardBasePath,
     subscribeBasePath,
     subscribeApi,
+    HEALTH_PATH,
+    READY_PATH,
+    makeLivenessBody,
+    makeReadinessResult,
+    type HealthCheck,
 } from '@repo/shared';
+import { prisma } from '@repo/prisma';
+import { redisClient } from '@repo/redis';
 
 dotenv.config();
 
@@ -42,6 +49,38 @@ app.use(
 
 app.get('/', (_req: Request, res: Response) => {
     res.send('Hello, TypeScript + Express!');
+});
+
+// Unauthenticated liveness — process up only; no dependency checks.
+app.get(HEALTH_PATH, (_req: Request, res: Response) => {
+    res.status(200).json(makeLivenessBody('server'));
+});
+
+app.get(READY_PATH, async (_req: Request, res: Response) => {
+    const checks: Record<string, HealthCheck> = {};
+
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        checks.postgres = { status: 'up' };
+    } catch (err) {
+        checks.postgres = {
+            status: 'down',
+            detail: err instanceof Error ? err.message : 'unreachable',
+        };
+    }
+
+    try {
+        await redisClient.ping();
+        checks.redis = { status: 'up' };
+    } catch (err) {
+        checks.redis = {
+            status: 'down',
+            detail: err instanceof Error ? err.message : 'unreachable',
+        };
+    }
+
+    const { statusCode, body } = makeReadinessResult('server', checks);
+    res.status(statusCode).json(body);
 });
 
 app.use(errorMiddleware);

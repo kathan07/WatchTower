@@ -41,10 +41,13 @@ COPY --from=installer --chown=nodeuser:nodejs /app/node_modules ./node_modules
 # Copy the built prisma client package
 COPY --from=installer --chown=nodeuser:nodejs /app/packages/prisma-client ./node_modules/@repo/prisma
 COPY --from=installer --chown=nodeuser:nodejs /app/packages/redis-client ./node_modules/@repo/redis
+COPY --from=installer --chown=nodeuser:nodejs /app/packages/shared ./node_modules/@repo/shared
 
 # Copy Prisma schema and generated client to ensure it's available at runtime
 # COPY --from=installer --chown=nodeuser:nodejs /app/packages/prisma-client/prisma ./prisma
 # COPY --from=installer --chown=nodeuser:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
+EXPOSE 3013
 
 USER nodeuser
 

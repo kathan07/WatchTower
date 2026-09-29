@@ -79,6 +79,18 @@ npm run dev -w scheduler-service
 - API: `http://localhost:3000` (`PORT`)
 - Client: `http://localhost:5173` (proxies `/api` to `SERVER_URL_LOCAL`)
 
+### Health / ready probes
+
+- API (on `PORT`): `GET /health` (always 200), `GET /ready` (200 if Postgres+Redis up, else 503)
+- Workers listen on `HEALTH_PORT` (or defaults below) for the same paths:
+  - monitoring-service `3011`
+  - scheduler-service `3012`
+  - alerting-service `3013`
+  - analysis-service `3014` (Postgres only)
+  - cleaning-service `3015` (Postgres only)
+
+Example: `curl -s http://localhost:3011/ready`
+
 Alerting, analysis, and cleaning only do work on their cron schedules. Monitoring does work only after the scheduler enqueues jobs and Redis is up.
 
 Stripe checkout needs `STRIPE_API_KEY` on the server. The browser publishable key is still hardcoded in `apps/client/src/pages/Plans.tsx`. Webhooks need `STRIPE_WEBHOOK_SECRET` and a tunnel to `POST /api/subscribe/stripe/webhook`.

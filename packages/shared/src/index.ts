@@ -18,3 +18,23 @@ export type {
 } from './types/dashboard';
 export type { MonitoringJob, WebsiteWithMonitor } from './types/monitoring';
 export type { SubscriptionPlan } from './types/subscription';
+export type {
+    CheckStatus,
+    GetChecks,
+    HealthCheck,
+    HealthEnvelope,
+    HealthStatus,
+} from './types/health';
+export {
+    DEFAULT_HEALTH_PORTS,
+    HEALTH_PATH,
+    READY_PATH,
+    resolveHealthPort,
+} from './constants/health';
+export type { HealthPortService } from './constants/health';
+export { makeLivenessBody, makeReadinessResult } from './health/envelope';
+export { startProbeServer } from './health/probe-server';
+export type {
+    ProbeServerHandle,
+    StartProbeServerOptions,
+} from './health/probe-server';

@@ -1,5 +1,11 @@
 import { CronJob } from 'cron';
-import { connectDb, disconnectDb } from '@repo/prisma';
+import { connectDb, disconnectDb, prisma } from '@repo/prisma';
+import {
+    resolveHealthPort,
+    startProbeServer,
+    type HealthCheck,
+    type ProbeServerHandle,
+} from '@repo/shared';
 import {
     cleanupOldAnalytics,
     cleanupOldLogs,
@@ -10,6 +16,7 @@ class CleanupService {
     private logCleanupJob!: CronJob;
     private analyticsCleanupJob!: CronJob;
     private subscriptionCheckJob!: CronJob;
+    private probe: ProbeServerHandle | null = null;
 
     constructor() {
         this.initializeErrorHandlers();
@@ -49,6 +56,27 @@ class CleanupService {
             console.log('Starting cleanup service...');
             this.initializeCronJobs();
             await connectDb();
+
+            const healthPort = resolveHealthPort('cleaning-service');
+            this.probe = await startProbeServer({
+                port: healthPort,
+                service: 'cleaning-service',
+                getChecks: async () => {
+                    const checks: Record<string, HealthCheck> = {};
+                    try {
+                        await prisma.$queryRaw`SELECT 1`;
+                        checks.postgres = { status: 'up' };
+                    } catch (err) {
+                        checks.postgres = {
+                            status: 'down',
+                            detail: err instanceof Error ? err.message : 'unreachable',
+                        };
+                    }
+                    return checks;
+                },
+            });
+            console.log(`Probe server listening on port ${healthPort}`);
+
             console.log('Cleanup service started successfully');
         } catch (error) {
             console.error('Error starting cleanup service:', error);
@@ -63,6 +91,9 @@ class CleanupService {
         this.analyticsCleanupJob?.stop();
         this.subscriptionCheckJob?.stop();
         try {
+            if (this.probe) {
+                await this.probe.close();
+            }
             await disconnectDb();
             console.log('Cleanup service stopped successfully');
         } catch (error) {
